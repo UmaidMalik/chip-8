@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    SDL_Window* window = SDL_CreateWindow("Chip-8", 800, 600, 0);
+    SDL_Window* window = SDL_CreateWindow("Chip-8", 800, 600, SDL_WINDOW_RESIZABLE);
     if (!window)
     {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create window: %s", SDL_GetError());
@@ -44,9 +44,13 @@ int main(int argc, char* argv[])
         SDL_SetRenderDrawColor(renderer, 0, 64, 128, 255);
         SDL_RenderClear(renderer);
 
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-        SDL_FRect rect = { 300, 200, 200 ,150 };
-        SDL_RenderFillRect(renderer, &rect);
+        for (int i = 0; i < 20; i++)
+        {
+            int offset = 5 * i;
+            SDL_SetRenderDrawColor(renderer, 255 - offset, 0 + offset * 1.2, 0 + offset, 255);
+            SDL_FRect rect = { float(300 + offset), float(200 - offset), float(200 + offset), float(150 - offset) };
+            SDL_RenderFillRect(renderer, &rect);
+        }
 
         SDL_RenderPresent(renderer);
     }
