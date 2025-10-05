@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <iostream>
 #include <bitset>
+#include "logger.hpp"
 
 class Chip8
 {
@@ -16,6 +17,8 @@ class Chip8
         uint16_t _sp;
         uint8_t _key[16];
         uint8_t _gfx[64 * 32];
+        Logger logger;
+
     private:
         int V_Size();    
     public:
@@ -30,7 +33,8 @@ class Chip8
 
 Chip8::Chip8()
 {
-    std::cout << "Chip8 constructor called\n";
+    logger.SetSink(LogSink::SDL);
+    logger.Info("Chip8 constructor called\n")
     for (int i = 0; i < V_Size(); i++)
     {
         _reg_V[i] = 0;
@@ -39,7 +43,7 @@ Chip8::Chip8()
 
 Chip8::~Chip8()
 {
-    std::cout << "Chip8 destructor called\n";
+    logger.Info("Chip8 constructor called\n")
 }
 
 void Chip8::LoadROM(const std::string& filename)
