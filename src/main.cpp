@@ -1,10 +1,20 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <iostream>
+#include "chip8.hpp"
 
 int main(int argc, char* argv[])
 {
     std::cout << "Hello World\n";
+
+    Chip8 chip8;
+    chip8.GetRegisters()[0] = 0xBB;
+    chip8.GetRegisters()[1] = 0xFF;
+    uint8_t* my = chip8.GetRegisters();
+    my[0x4] = 0xFF;
+    chip8.Debug_Print();
+
+
     if (!SDL_Init(SDL_INIT_VIDEO))
     {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_Init failed: %s", SDL_GetError());

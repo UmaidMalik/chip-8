@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <iostream>
+#include <bitset>
 
 class Chip8
 {
@@ -15,22 +16,65 @@ class Chip8
         uint16_t _sp;
         uint8_t _key[16];
         uint8_t _gfx[64 * 32];
-        
+    private:
+        int V_Size();    
     public:
         Chip8();
         ~Chip8();
         void LoadROM(const std::string& filename);
         void Cycle();
+        void Debug_Print();
+        void Debug_PrintGfx();
+        uint8_t (&GetRegisters())[16];
 };
 
 Chip8::Chip8()
 {
     std::cout << "Chip8 constructor called\n";
+    for (int i = 0; i < V_Size(); i++)
+    {
+        _reg_V[i] = 0;
+    }
 }
 
 Chip8::~Chip8()
 {
     std::cout << "Chip8 destructor called\n";
+}
+
+void Chip8::LoadROM(const std::string& filename)
+{
+
+}
+
+void Chip8::Cycle()
+{
+
+}
+
+void Chip8::Debug_Print()
+{
+    int n = V_Size() / 2;
+    for (int i = 0; i < n; i++)
+    {
+        //std::cout << "V" << i << ": " << static_cast<int>(_reg_V[i]) << "     V" << i+n << ": " << static_cast<int>(_reg_V[i+n]) << std::uppercase << std::hex << "\n";
+        std::cout << "V" << i << ": " << std::bitset<8>(_reg_V[i]) << "     V" << i+n << ": " << std::bitset<8>(_reg_V[i+n]) << std::uppercase << std::hex << "\n";
+    }
+}
+
+void Chip8::Debug_PrintGfx()
+{
+
+}
+
+int Chip8::V_Size()
+{
+    return sizeof(_reg_V) / sizeof(_reg_V[0]);
+}
+
+uint8_t (&Chip8::GetRegisters())[16]
+{
+    return _reg_V;
 }
 
 /*
