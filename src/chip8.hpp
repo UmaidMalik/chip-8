@@ -32,7 +32,112 @@ Notes:
       in draw instruction, it's set upon pixel collision
   - Address register is named I and is 12 bits wide
       used for opcodes that involve memory operations
-
-    
-
+  Stack:
+  - Used to store return addresses when subroutines are called
+    Original version allocated 48 bytes for up to 12 levels
+  Timer:
+  - Two timers, bot count down at 60 Hz until 0
+      Delay timer is for timing events in game, can be set and read
+      Sound timer is for sound effects, when nonzero, beeping sound
+        is played. Can only be set.
+  Input:
+  - Hey keyboard, 16 keys, range 0 to F
+    Three opcodes used for detecting input
+  Graphics and sound:
+  - 64x32 pixels
+  - Monochrome
+  - Sprite pixels are XOR'd with corresponding screen pixel
+  - Unset sprite pixels do nothing
+  - The carry flag (VF) is set to 1 if any screen pixels are flipped
+      from set to unset when a sprite is drawn and set to 0 otherwise
+  Opcode table:
+  - 35 opcodes
+  - two bytes long
+  - stored in big-endian
+  - opcode in hexadecimal with the following symbols listed below
+    - NNN   address
+    - NN    8-bit constant
+    - N     4-bit constant
+    - X     4-bit register identifier
+    - Y     4-bit register identifier
+    - PC    Programm Counter
+    - I     12-bit register (For memory address) (similar to void pointer)
+    - VN    One of the 16 available variables. N may be 0 to F
+  - instruction set:
+    #   | opcode    | type      | C pseudocode          | explanation
+    01  | 0NNN      | Call      |                       | Calls machine coude routing at address NNN
+    02  | 00E0      | Display   | disp_clear()          | Clears the screen
+    03  | 00EE      | Flow      | return;               | Returns from a subroutine
+    04  | 1NNN      | Flow      | goto NNN;             | Jumps to address NNN
+    05  | 2NNN      | Flow      | *(0xNNN)()            | Calls subroutine at NNN
+    06  | 3XNN      | Cond      | if (Vx == NN)         | Skips the next instruction if VX equals NN
+    07  | 4XNN      | Cond      | if (Vx != NN)         | Skips the next instruction if VX does not 
+        |           |           |                       | equal NN
+    08  | 5XY0      | Cond      | if (Vx == Vy)         | Skips the next instruction if VX equals VY
+    09  | 6XNN      | Const     | Vx = NN               | Sets VX to NN
+    10  | 7XNN      | Const     | Vx += NN              | Adds NN to Vx (carry flag is not changed)
+    11  | 8XY0      | Assig     | Vx = Vy               | Sets VX to the value of VY
+    12  | 8XY1      | BitOp     | Vx |= Vy              | Sets VX to VX or VY, bitwise OR
+    13  | 8XY2      | BitOp     | Vx &= Vy              | Sets VX to VX and VY, bitwise AND
+    14  | 8XY3      | BitOp     | Vx ^= Vy              | Sets VX to VX xor VY, bitwise XOR
+    15  | 8XY4      | Math      | Vx += Vy              | Adds VY to VX. VF is set to 1 when 
+        |           |           |                       | overflow, 0 otherwise
+    16  | 8XY5      | Math      | Vx -= Vy              | VY is subtracted fom VX. VF is set to 0 
+        |           |           |                       | when there's underflow, 1 otherwise
+    17  | 8XY6      | BitOp     | Vx >>= 1              | Shifts VX to the right by 1, then stores 
+        |           |           |                       | the least significant bit of VX prior to 
+        |           |           |                       | the shift into VF
+    18  | 8XY7      | Math      | Vx = Vy - Vx          | Sets VX to VY minus VX. VF is set to 0 when 
+        |           |           |                       | there's an underflow, and 1 otherwise
+    19  | 8XYE      | BitOp     | Vx <<= 1              | Shifts VX to the left by 1, then sets VF to 
+        |           |           |                       | 1 if the most significant bit of VX prior 
+        |           |           |                       | to that shift was set, or to 0 if it was 
+        |           |           |                       | unset
+    20  | 9XY0      | Cond      | if (Vx != Vy)         | Skips the next instruction if VX does not 
+        |           |           |                       | equal VY
+    21  | ANNN      | MEM       | I = NNN               | Sets I to the address NNN
+    22  | BNNN      | Flow      | PC = V0 + NNN         | Jumps to the address NNN plus V0
+    23  | CXNN      | Rand      | Vx = rand() & NN      | Sets VX to the result of a bitwise AND on
+        |           |           |                       | a random rumber and NN 
+    24  | DXYN      | Display   | draw(Vx, Vy, N)       | Draws a sprite at coordinate (VX, VY) that 
+        |           |           |                       | has a width of 8px and height of Npx. Each
+        |           |           |                       | row of 8 pixels is read as bit-coded 
+        |           |           |                       | starting from memory location I. I values 
+        |           |           |                       | does not change after exectution. VF is 
+        |           |           |                       | set to 1 if any screen pixels are flipped 
+        |           |           |                       | from set to unset when set to unset when 
+        |           |           |                       | the sprite is drawn, and 0 otherwise
+    25  | EX9E      | KeyOp     | if (key() == Vx)      | Skips the next instruction if the key 
+        |           |           |                       | stored in VX(only consider the lowest 
+        |           |           |                       | nibble) is pressed
+    26  | EXA1      | KeyOp     | if (key() != Vx)      | Skips the next instruction if the key 
+        |           |           |                       | stored in VX(only consided the lowest 
+        |           |           |                       | nibble) is not pressed
+    27  | FX07      | Timer     | Vx = get_delay()      | Sets VX to the value of the delay timer
+    28  | FX0A      | KeyOp     | Vx = get_key()        | A key press is awaited, and then stored 
+        |           |           |                       | in VX (blocking opration, all instruction 
+        |           |           |                       | halted untile next key event, delay and 
+        |           |           |                       | sound timers should continue processing)
+    29  | FX15      | Timer     | delay_timer(Vx)       | Sets the delay timer to VX
+    30  | FX18      | Sound     | sound_timer(Vx)       | Sets the sound timer to VX
+    31  | FX1E      | MEM       | I += Vx               | Adds VX to I. VF is not affected
+    32  | FX29      | MEM       | I = sprite_addr[Vcx]  | Sets I to the location of the sprite for 
+        |           |           |                       | the character in VX(only consided the 
+        |           |           |                       | lowest nibble) Characters 0-F are 
+        |           |           |                       | represented by a 4x5 font
+    33  | FX33      | BCD       | set_BCD(Vx)           | Stores the BCD representation of VX, with 
+        |           |           | *(I+0) =              | the hundreds digit in memory at location 
+        |           |           | BCD(3);               | in I, the tens at location I+1, and the 
+        |           |           | *(I+1) =              | ones digit at location I+2
+        |           |           | BCD(2);               |
+        |           |           | *(I+2) =              |
+        |           |           | BCD(1);               |
+    34  | FX55      | MEM       | reg_dump(Vx, &I)      | Stores from V0 to VX (inclusive) in memory, 
+                                                          starting at address I, The offset from I is
+                                                          inscreased by 1 for each value written, 
+                                                          but I is not modified
+    35  | FX65      | MEM       | reg_load(Vx, &I)      | Fills from V0 to VX (inclusive) with values 
+                                                          from memory, starting at address I. The 
+                                                          offset from I is increased by 1 for each 
+                                                          value read, but I is not modified
 */
