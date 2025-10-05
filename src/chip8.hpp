@@ -5,13 +5,22 @@
 class Chip8
 {
     private:
-        uint8_t memory[4096];
-        uint8_t reg_V[16];
-        uint16_t reg_I;
+        uint8_t _memory[4096];
+        uint8_t _reg_V[16];
+        uint16_t _reg_I;
+        uint16_t _pc;
+        uint8_t _delay_timer;
+        uint8_t _sound_timer;
+        uint16_t _stack[16];
+        uint16_t _sp;
+        uint8_t _key[16];
+        uint8_t _gfx[64 * 32];
         
     public:
         Chip8();
         ~Chip8();
+        void LoadROM(const std::string& filename);
+        void Cycle();
 };
 
 Chip8::Chip8()
