@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <iostream>
 
 class Chip8
 {
@@ -12,6 +13,16 @@ class Chip8
         Chip8();
         ~Chip8();
 };
+
+Chip8::Chip8()
+{
+    std::cout << "Chip8 constructor called\n";
+}
+
+Chip8::~Chip8()
+{
+    std::cout << "Chip8 destructor called\n";
+}
 
 /*
 Notes:
