@@ -40,7 +40,7 @@ class Chip8
 
 Chip8::Chip8()
 {
-    log.Info("Chip8 constructor called\n");
+    log.Info("Chip8 constructor called");
     for (int i = 0; i < V_Size(); i++)
     {
         _reg_V[i] = 0;
@@ -49,7 +49,7 @@ Chip8::Chip8()
 
 Chip8::~Chip8()
 {
-    log.Info("Chip8 destructor called\n");
+    log.Info("Chip8 destructor called");
 }
 
 void Chip8::LoadROM(const std::string& filename)

@@ -40,8 +40,10 @@ target_include_directories(Chip8
   PRIVATE ${PROJECT_SOURCE_DIR}/src
 )
 
-target_link_libraries(Chip8 PRIVATE SDL3::SDL3)
-target_link_libraries(Chip8 PRIVATE fmt::fmt)
+target_link_libraries(Chip8 PRIVATE 
+  SDL3::SDL3
+  fmt::fmt
+)
 set_target_properties(Chip8 PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
 # Pretty groups in IDEs

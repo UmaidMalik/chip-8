@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
     my[0xB] = 0xFE;
     my[0xA] = 0xBF;
     my[0xC] = 0xCE;
-    chip8.Debug_Print();
+    chip8.Debug_Print(PrintMode::Bin);
 
 
     if (!SDL_Init(SDL_INIT_VIDEO))

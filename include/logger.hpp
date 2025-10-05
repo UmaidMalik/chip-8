@@ -36,13 +36,13 @@ class Logger
         template<typename... Args>
         void Log(LogLevel lvl, fmt::format_string<Args...> fmt_str, Args&&... args)
         {
-            fmt::print(stderr, "{}{}", prefix(lvl), fmt::format(fmt_str, std::forward<Args>(args)...));
+            fmt::print(stderr, "{}{}\n", prefix(lvl), fmt::format(fmt_str, std::forward<Args>(args)...));
         }
 
         template<typename... Args>
         void Print(fmt::format_string<Args...> fmt_str, Args&&... args)
         {
-            Log(LogLevel::Default, fmt_str, std::forward<Args>(args)...);
+            fmt::print(stderr, "{}{}", prefix(LogLevel::Default), fmt::format(fmt_str, std::forward<Args>(args)...));
         }
         
         template<typename... Args>
