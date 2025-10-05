@@ -33,8 +33,7 @@ class Chip8
 
 Chip8::Chip8()
 {
-    logger.SetSink(LogSink::SDL);
-    logger.Info("Chip8 constructor called\n")
+    logger.Log(LogLevel::Info, "Chip8 constructor called\n");
     for (int i = 0; i < V_Size(); i++)
     {
         _reg_V[i] = 0;
@@ -43,7 +42,7 @@ Chip8::Chip8()
 
 Chip8::~Chip8()
 {
-    logger.Info("Chip8 constructor called\n")
+    logger.Log(LogLevel::Info, "Chip8 destructor called\n");
 }
 
 void Chip8::LoadROM(const std::string& filename)

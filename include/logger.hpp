@@ -8,96 +8,68 @@
 
 enum class LogLevel
 {
-    Trace,
-    Debug,
     Info,
     Warn,
     Error,
-    Critical
-};
-
-enum class LogSink
-{
-    SDL,
-    StdErr,
-    StdOut
+    Debug
 };
 
 class Logger
 {
     private:
-        std::mutex m_mutex;
-        LogSink m_sink;
-
         void vlog(LogLevel lvl, const char* fmt, va_list args)
-        {  
-            switch (m_sink)
+        {
+            const char* prefix = nullptr;
+            switch(lvl)
             {
-                case LogSink::SDL:
-                #if defined(SDL_VERSION_ATLEAST)
-                    {
-                        int priority = 0;
-                        switch(lvl)
-                        {
-                            case LogLevel::Trace: case LogLevel::Debug: priority = 1; break;
-                            case LogLevel::Info: priority = 2; break;
-                            case LogLevel::Warn: priority = 3; break;
-                            case LogLevel::Error: priority = 4; break;
-                            case LogLevel::Critical: priority = 5; break;
-                        }
-                        extern void SDL_LogMessageV(int category, int priority, const char* fmt, va_list ap);
-                        SDL_LogMessageV(0, priority, fmt, args);
-                        break;
-                    }   
-                #endif
-                    break;
-                case LogSink::StdErr:
-                    std::vfprintf(stderr, fmt, args);
-                    std::fputc('\n', stderr);
-                    std::fflush(stderr);
-                    break;
-                case LogSink::StdOut:
-                {
-                    char buffer[2048];
-                    vsnprintf(buffer, sizeof(buffer), fmt, args);
-                    fprintf(stdout, "%s\n", buffer);
-                    fflush(stdout);
-                    break;
-                }
+                case LogLevel::Info:    prefix = "[INFO] "; break;
+                case LogLevel::Warn:    prefix = "[WARN] "; break;
+                case LogLevel::Error:   prefix = "[ERROR] "; break;
+                case LogLevel::Debug:   prefix = "[DEBUG] "; break;
             }
+            std::fprintf(stderr, "%s", prefix);
+            std::vfprintf(stderr, fmt, args);
+            std::fprintf(stderr, "\n");           
         }
     public:
-        explicit Logger(LogSink sink = LogSink::SDL) : m_sink(sink) {};
-        void SetSink(LogSink s) { m_sink = s; };
+        explicit Logger() {};
         void Log(LogLevel lvl, const char* fmt, ...)
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
             va_list args;
             va_start(args, fmt);
+            vlog(lvl, fmt, args);
             va_end(args);
         }
         
         void Info(const char* fmt, ...)
         {
-            va_list a;
-            va_start(a, fmt);
-            vlog(LogLevel::Info, fmt, a);
-            va_end(a);
+            va_list args;
+            va_start(args, fmt);
+            vlog(LogLevel::Info, fmt, args);
+            va_end(args);
         }
 
         void Warn(const char* fmt, ...)
         {
-            va_list a;
-            va_start(a, fmt);
-            vlog(LogLevel::Warn, fmt, a);
-            va_end(a);
+            va_list args;
+            va_start(args, fmt);
+            vlog(LogLevel::Warn, fmt, args);
+            va_end(args);
         }
 
         void Error(const char* fmt, ...)
         {
-            va_list a;
-            va_start(a, fmt);
-            vlog(LogLevel::Error, fmt, a);
-            va_end(a);
+            va_list args;
+            va_start(args, fmt);
+            vlog(LogLevel::Error, fmt, args);
+            va_end(args);
+        }
+
+        void Debug(const char* fmt, ...)
+        {
+            va_list args;
+            va_start(args, fmt);
+            vlog(LogLevel::Debug, fmt, args);
+            va_end(args);
         }
 };
