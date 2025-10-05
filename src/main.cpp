@@ -14,6 +14,10 @@ int main(int argc, char* argv[])
     chip8.GetRegisters()[1] = 0xFF;
     uint8_t* my = chip8.GetRegisters();
     my[0x4] = 0xFF;
+    my[0xF] = 0xFE;
+    my[0xB] = 0xFE;
+    my[0xA] = 0xBF;
+    my[0xC] = 0xCE;
     chip8.Debug_Print();
 
 

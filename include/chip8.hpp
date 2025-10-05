@@ -4,6 +4,13 @@
 #include <bitset>
 #include "logger.hpp"
 
+enum class PrintMode
+{
+    Dec,
+    Hex,
+    Bin
+};
+
 class Chip8
 {
     private:
@@ -26,7 +33,7 @@ class Chip8
         ~Chip8();
         void LoadROM(const std::string& filename);
         void Cycle();
-        void Debug_Print();
+        void Debug_Print(PrintMode pm);
         void Debug_PrintGfx();
         uint8_t (&GetRegisters())[16];
 };
@@ -55,14 +62,23 @@ void Chip8::Cycle()
 
 }
 
-void Chip8::Debug_Print()
+void Chip8::Debug_Print(PrintMode pm = PrintMode::Hex)
 {
     int n = V_Size() / 2;
     for (int i = 0; i < n; i++)
     {
-        //std::cout << "V" << i << ": " << static_cast<int>(_reg_V[i]) << "     V" << i+n << ": " << static_cast<int>(_reg_V[i+n]) << std::uppercase << std::hex << "\n";
-        //std::cout << "V" << i << ": " << std::bitset<8>(_reg_V[i]) << "     V" << i+n << ": " << std::bitset<8>(_reg_V[i+n]) << std::uppercase << std::hex << "\n";
-        log.Print("V{}: {}     V{}: {}\n", i, (_reg_V[i]), i+n, (_reg_V[i]));
+        switch(pm)
+        {
+            case PrintMode::Dec:
+                log.Print("V{:X}: {:03}     V{:X}: {:03}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
+                break;
+            case PrintMode::Hex:
+                log.Print("V{:X}: {:02X}     V{:X}: {:02X}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
+                break;
+            case PrintMode::Bin:
+                log.Print("V{:X}: {:08b}     V{:X}: {:08b}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
+                break;
+        }
     }
 }
 
