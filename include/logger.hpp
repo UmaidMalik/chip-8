@@ -1,13 +1,13 @@
 #pragma once
 
-#include <cstdio>
-#include <cstdarg>
-#include <mutex>
-#include <string>
+#include <fmt/core.h>
+#include <fmt/printf.h>
+#include <string_view>
 #include <SDL3/SDL.h>
 
 enum class LogLevel
 {
+    Default,
     Info,
     Warn,
     Error,
@@ -17,59 +17,55 @@ enum class LogLevel
 class Logger
 {
     private:
-        void vlog(LogLevel lvl, const char* fmt, va_list args)
+        const char* prefix(LogLevel lvl)
         {
-            const char* prefix = nullptr;
             switch(lvl)
             {
-                case LogLevel::Info:    prefix = "[INFO] "; break;
-                case LogLevel::Warn:    prefix = "[WARN] "; break;
-                case LogLevel::Error:   prefix = "[ERROR] "; break;
-                case LogLevel::Debug:   prefix = "[DEBUG] "; break;
+                case LogLevel::Default: return "";
+                case LogLevel::Info:    return "\033[32m[INFO] \033[0m";
+                case LogLevel::Warn:    return "\033[33m[WARN] \033[0m ";
+                case LogLevel::Error:   return "\033[31m[ERROR] \033[0m";
+                case LogLevel::Debug:   return "\033[34m[DEBUG] \033[0m";
+                default:                return "";
             }
-            std::fprintf(stderr, "%s", prefix);
-            std::vfprintf(stderr, fmt, args);
-            std::fprintf(stderr, "\n");           
+            return "";
         }
     public:
-        explicit Logger() {};
-        void Log(LogLevel lvl, const char* fmt, ...)
+        Logger() = default;
+        
+        template<typename... Args>
+        void Log(LogLevel lvl, fmt::format_string<Args...> fmt_str, Args&&... args)
         {
-            va_list args;
-            va_start(args, fmt);
-            vlog(lvl, fmt, args);
-            va_end(args);
+            fmt::print(stderr, "{}{}", prefix(lvl), fmt::format(fmt_str, std::forward<Args>(args)...));
+        }
+
+        template<typename... Args>
+        void Print(fmt::format_string<Args...> fmt_str, Args&&... args)
+        {
+            Log(LogLevel::Default, fmt_str, std::forward<Args>(args)...);
         }
         
-        void Info(const char* fmt, ...)
+        template<typename... Args>
+        void Info(fmt::format_string<Args...> fmt_str, Args&&... args)
         {
-            va_list args;
-            va_start(args, fmt);
-            vlog(LogLevel::Info, fmt, args);
-            va_end(args);
+            Log(LogLevel::Info, fmt_str, std::forward<Args>(args)...);
         }
 
-        void Warn(const char* fmt, ...)
+        template<typename... Args>
+        void Warn(fmt::format_string<Args...> fmt_str, Args&&... args)
         {
-            va_list args;
-            va_start(args, fmt);
-            vlog(LogLevel::Warn, fmt, args);
-            va_end(args);
+            Log(LogLevel::Warn, fmt_str, std::forward<Args>(args)...);
         }
 
-        void Error(const char* fmt, ...)
+        template<typename... Args>
+        void Error(fmt::format_string<Args...> fmt_str, Args&&... args)
         {
-            va_list args;
-            va_start(args, fmt);
-            vlog(LogLevel::Error, fmt, args);
-            va_end(args);
+            Log(LogLevel::Error, fmt_str, std::forward<Args>(args)...);
         }
 
-        void Debug(const char* fmt, ...)
+        template<typename... Args>
+        void Debug(fmt::format_string<Args...> fmt_str, Args&&... args)
         {
-            va_list args;
-            va_start(args, fmt);
-            vlog(LogLevel::Debug, fmt, args);
-            va_end(args);
+            Log(LogLevel::Debug, fmt_str, std::forward<Args>(args)...);
         }
 };

@@ -3,6 +3,7 @@ project(Chip8 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # output dirs
@@ -21,6 +22,7 @@ option(SDL_SHARED "Build shared SDL library" OFF)
 option(SDL_STATIC "Build static SDL library" ON)
 option(SDL_TEST "Build SDL test programs" OFF)
 add_subdirectory(thirdparty/SDL)  # provides SDL3::SDL3-static
+add_subdirectory(thirdparty/fmt)
 
 # App sources/headers
 file(GLOB_RECURSE C8_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
@@ -39,6 +41,8 @@ target_include_directories(Chip8
 )
 
 target_link_libraries(Chip8 PRIVATE SDL3::SDL3)
+target_link_libraries(Chip8 PRIVATE fmt::fmt)
+set_target_properties(Chip8 PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
 # Pretty groups in IDEs
 source_group(TREE "${PROJECT_SOURCE_DIR}/src"     FILES ${C8_SOURCES} ${C8_PRIV_HDR})

@@ -17,7 +17,7 @@ class Chip8
         uint16_t _sp;
         uint8_t _key[16];
         uint8_t _gfx[64 * 32];
-        Logger logger;
+        Logger log;
 
     private:
         int V_Size();    
@@ -33,7 +33,7 @@ class Chip8
 
 Chip8::Chip8()
 {
-    logger.Log(LogLevel::Info, "Chip8 constructor called\n");
+    log.Info("Chip8 constructor called\n");
     for (int i = 0; i < V_Size(); i++)
     {
         _reg_V[i] = 0;
@@ -42,7 +42,7 @@ Chip8::Chip8()
 
 Chip8::~Chip8()
 {
-    logger.Log(LogLevel::Info, "Chip8 destructor called\n");
+    log.Info("Chip8 destructor called\n");
 }
 
 void Chip8::LoadROM(const std::string& filename)
@@ -61,7 +61,8 @@ void Chip8::Debug_Print()
     for (int i = 0; i < n; i++)
     {
         //std::cout << "V" << i << ": " << static_cast<int>(_reg_V[i]) << "     V" << i+n << ": " << static_cast<int>(_reg_V[i+n]) << std::uppercase << std::hex << "\n";
-        std::cout << "V" << i << ": " << std::bitset<8>(_reg_V[i]) << "     V" << i+n << ": " << std::bitset<8>(_reg_V[i+n]) << std::uppercase << std::hex << "\n";
+        //std::cout << "V" << i << ": " << std::bitset<8>(_reg_V[i]) << "     V" << i+n << ": " << std::bitset<8>(_reg_V[i+n]) << std::uppercase << std::hex << "\n";
+        log.Print("V{}: {}     V{}: {}\n", i, (_reg_V[i]), i+n, (_reg_V[i]));
     }
 }
 
