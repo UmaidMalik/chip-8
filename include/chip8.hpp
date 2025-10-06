@@ -17,14 +17,14 @@ class Chip8
         uint8_t _memory[4096];
         uint8_t _reg_V[16];
         uint16_t _reg_I = 0;
-        uint16_t _pc = 0;
+        uint16_t _pc = 0x200;
         uint8_t _delay_timer = 0;
         uint8_t _sound_timer = 0;
         uint16_t _stack[16];
         uint16_t _sp = 0;
         uint8_t _key[16];
         uint8_t _gfx[64 * 32];
-
+        bool _draw_flag = false;
     private:
         int V_Size();    
     public:
@@ -32,6 +32,9 @@ class Chip8
         ~Chip8();
         void LoadROM(const std::string& filename);
         void Cycle();
+        bool DrawFlag();
+        void Reset();
+        void ClearScreen();
         void Debug_Print(PrintMode pm);
         void Debug_PrintGfx();
         uint8_t (&GetRegisters())[16];
@@ -40,12 +43,7 @@ class Chip8
 Chip8::Chip8()
 {
     logger::Info("Chip8 constructor called");
-    for (int i = 0; i < V_Size(); i++)
-    {
-        _reg_V[i] = 0;
-        _key[i] = 0;
-        _stack[i] = 0;
-    }
+    Reset();
 }
 
 Chip8::~Chip8()
@@ -61,6 +59,31 @@ void Chip8::LoadROM(const std::string& filename)
 void Chip8::Cycle()
 {
 
+}
+
+bool Chip8::DrawFlag()
+{
+    return _draw_flag;
+}
+
+void Chip8::Reset()
+{
+    std::fill(std::begin(_memory), std::end(_memory), 0);
+    std::fill(std::begin(_reg_V), std::end(_reg_V), 0);
+    _reg_I = 0;
+    _pc = 0x200;
+    _delay_timer = 0;
+    _sound_timer = 0;
+    std::fill(std::begin(_stack), std::end(_stack), 0);
+    _sp = 0;
+    std::fill(std::begin(_key), std::end(_key), 0);
+    std::fill(std::begin(_gfx), std::end(_gfx), 0);
+    _draw_flag = false;
+}
+
+void Chip8::ClearScreen()
+{
+    std::fill(std::begin(_gfx), std::end(_gfx), 0);
 }
 
 void Chip8::Debug_Print(PrintMode pm = PrintMode::Hex)
@@ -205,7 +228,7 @@ Notes:
     - VN    One of the 16 available variables. N may be 0 to F
   - instruction set:
     #   | opcode    | type      | C pseudocode          | explanation
-    01  | 0NNN      | Call      |                       | Calls machine coude routing at address NNN
+    01  | 0NNN      | Call      |                       | Calls machine code routing at address NNN
     02  | 00E0      | Display   | disp_clear()          | Clears the screen
     03  | 00EE      | Flow      | return;               | Returns from a subroutine
     04  | 1NNN      | Flow      | goto NNN;             | Jumps to address NNN
