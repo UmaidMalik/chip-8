@@ -82,14 +82,6 @@ void Chip8::Debug_Print(PrintMode pm = PrintMode::Hex)
         }
     }
     logger::Print("\n");
-    /*
-        uint16_t _reg_I = 0;
-        uint16_t _pc = 0;
-        uint8_t _delay_timer = 0;
-        uint8_t _sound_timer = 0;
-        uint16_t _stack[16];
-        uint16_t _sp = 0;
-    */
     switch(pm)
     {
         case PrintMode::Dec:
@@ -125,6 +117,22 @@ void Chip8::Debug_Print(PrintMode pm = PrintMode::Hex)
                 break;
         }
     }
+    logger::Print("\n");
+    for (int i = 0; i < n; i++)
+    {
+        switch(pm)
+        {
+            case PrintMode::Dec:
+                logger::Print("Key{:X}: {:05}     Key{:X}: {:05}    Key{:X}: {:05}    Key{:X}: {:05}\n", i, _key[i], i+n, _key[i+n], i+(n*2), _key[i+(n*2)], i+(n*3), _key[i+(n*3)]);
+                break;
+            case PrintMode::Hex:
+                logger::Print("Key{:X}: {:04X}     Key{:X}: {:04X}    Key{:X}: {:04X}    Key{:X}: {:04X}\n", i, _key[i], i+n, _key[i+n], i+(n*2), _key[i+(n*2)], i+(n*3), _key[i+(n*3)]);
+                break;
+            case PrintMode::Bin:
+                logger::Print("Key{:X}: {:016b}     Key{:X}: {:016b}    Key{:X}: {:016b}    Key{:X}: {:016b}\n", i, _key[i], i+n, _key[i+n], i+(n*2), _key[i+(n*2)], i+(n*3), _key[i+(n*3)]);
+                break;
+        }
+    }
 }
 
 void Chip8::Debug_PrintGfx()
@@ -145,6 +153,9 @@ uint8_t (&Chip8::GetRegisters())[16]
 /*
 Notes:
   Memory:
+  - 0x000-0x1FF Chip 8 interperter
+  - 0x050-0x0A0 Used for built-in 4x5 pixel font set (0-F)
+  - 0x200-0xFFF Program ROM and work RAM
   - Chip8 interpreter occupies 512 bytes
   - Most programs being at mem location 512 (0x200)
   - Uppermost 256 bytes (0xF00-0xFFF) are for display
