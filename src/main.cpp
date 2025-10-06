@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
     chip8._memory[chip8._pc] = 0xA2;
     chip8._memory[chip8._pc + 1] = 0xF0;
     chip8.Cycle();
-    logger::Print("opcode: {:04X}\n", chip8._opcode);
+    logger::Debug("opcode: {:04X}", chip8._opcode);
     chip8.Debug_Print(PrintMode::Hex);
 
 

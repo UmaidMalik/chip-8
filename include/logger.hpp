@@ -21,8 +21,8 @@ namespace logger
         switch(lvl)
         {
             case LogLevel::Default: return "";
-            case LogLevel::Info:    return "\033[32m[INFO] \033[0m";
-            case LogLevel::Warn:    return "\033[33m[WARN] \033[0m ";
+            case LogLevel::Info:    return "\033[32m[INFO]  \033[0m";
+            case LogLevel::Warn:    return "\033[33m[WARN]  \033[0m ";
             case LogLevel::Error:   return "\033[31m[ERROR] \033[0m";
             case LogLevel::Debug:   return "\033[34m[DEBUG] \033[0m";
             default:                return "";
