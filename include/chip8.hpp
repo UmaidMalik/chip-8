@@ -13,7 +13,7 @@ enum class PrintMode
 
 class Chip8
 {
-    private:
+    public:
         uint8_t _memory[4096];
         uint8_t _reg_V[16];
         uint16_t _reg_I = 0;
@@ -24,9 +24,11 @@ class Chip8
         uint16_t _sp = 0;
         uint8_t _key[16];
         uint8_t _gfx[64 * 32];
+        uint16_t _opcode = 0;
         bool _draw_flag = false;
     private:
-        int V_Size();    
+        int V_Size();
+        void IncrementProgramCount();    
     public:
         Chip8();
         ~Chip8();
@@ -58,7 +60,18 @@ void Chip8::LoadROM(const std::string& filename)
 
 void Chip8::Cycle()
 {
+    _opcode = 0x0000;
+    _opcode |= _memory[_pc]; // hi
+    _opcode <<= 8; 
+    _opcode  |= _memory[_pc + 1]; // lo
+    // Fetch opcode
+    // Decode opcode
+    // Execute opcode
 
+
+    // update timers
+
+    IncrementProgramCount();
 }
 
 bool Chip8::DrawFlag()
@@ -78,6 +91,7 @@ void Chip8::Reset()
     _sp = 0;
     std::fill(std::begin(_key), std::end(_key), 0);
     std::fill(std::begin(_gfx), std::end(_gfx), 0);
+    _opcode = 0;
     _draw_flag = false;
 }
 
@@ -166,6 +180,11 @@ void Chip8::Debug_PrintGfx()
 int Chip8::V_Size()
 {
     return sizeof(_reg_V) / sizeof(_reg_V[0]);
+}
+
+void Chip8::IncrementProgramCount()
+{
+    _pc += 2;
 }
 
 uint8_t (&Chip8::GetRegisters())[16]

@@ -17,7 +17,11 @@ int main(int argc, char* argv[])
     my[0xB] = 0xFE;
     my[0xA] = 0xBF;
     my[0xC] = 0xCE;
-    chip8.Debug_Print(PrintMode::Bin);
+    chip8._memory[chip8._pc] = 0xA2;
+    chip8._memory[chip8._pc + 1] = 0xF0;
+    chip8.Cycle();
+    logger::Print("opcode: {:04X}\n", chip8._opcode);
+    chip8.Debug_Print(PrintMode::Hex);
 
 
     if (!SDL_Init(SDL_INIT_VIDEO))
