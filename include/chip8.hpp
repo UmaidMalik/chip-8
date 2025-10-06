@@ -353,14 +353,6 @@ void Chip8::Execute_0x7()
 
 void Chip8::Execute_0x8()
 {
-    /*
-    |   18  | 8XY7      | Math      | Vx = Vy - Vx          | Sets VX to VY minus VX. VF is set to 0 when 
-    |       |           |           |                       | there's an underflow, and 1 otherwise
-    |   19  | 8XYE      | BitOp     | Vx <<= 1              | Shifts VX to the left by 1, then sets VF to 
-    |       |           |           |                       | 1 if the most significant bit of VX prior 
-    |       |           |           |                       | to that shift was set, or to 0 if it was 
-    |       |           |           |                       | unset
-    */
    u_int16_t option = 0x000F & _opcode;
    logger::Debug("option: {:0X}", option);
    switch (option)
@@ -400,12 +392,23 @@ void Chip8::Execute_0x8()
         _V[_X] -= _V[_Y];
         break;
     case 0x6:
-        _V[0xF] = 0x0001 & _V[_X];
+        _V[0xF] = 0x01 & _V[_X];
         _V[_X] >>= 1;
         break;
     case 0x7:
+        if (_V[_X] > _V[_Y])
+        {
+            VF_FlagClear();
+        }
+        else
+        {
+            VF_Flag();
+        }
+        _V[_X] = _V[_Y] - _V[_X];
         break;
     case 0xE:
+        _V[0xF] = _V[_X] >> 7;
+        _V[_X] <<= 1;
         break;
     default:
         logger::Warn("Unknown opcode {:04X}", _opcode);
