@@ -15,8 +15,8 @@ class Chip8
 {
     public: // <--- change back to private after
         uint8_t _memory[4096];
-        uint8_t _reg_V[16];
-        uint16_t _reg_I = 0;
+        uint8_t _V[16];
+        uint16_t _I = 0;
         uint16_t _pc = 0x200;
         uint8_t _delay_timer = 0;
         uint8_t _sound_timer = 0;
@@ -27,8 +27,8 @@ class Chip8
         uint16_t _opcode = 0;
         uint16_t _NNN = 0;
         uint16_t __NN = 0;
-        uint16_t _X = 0;
-        uint16_t _Y = 0;
+        uint8_t _X = 0;
+        uint8_t _Y = 0;
         bool _draw_flag = false;
     private:
         int V_Size();
@@ -50,7 +50,9 @@ class Chip8
         void Execute_0xE();
         void Execute_0xF();  
         void Get_X();
-        void Get_Y();  
+        void Get_Y();
+        void VF_Flag();
+        void VF_FlagClear();
     public:
         Chip8();
         ~Chip8();
@@ -93,9 +95,12 @@ void Chip8::Cycle()
     __NN = 0x00FF & _opcode;
     Get_X();
     Get_Y();
+    logger::Debug("opcode: {:04X}", _opcode);
+    logger::Debug("instruction: {:X}", _opcode >> 12);
     logger::Debug("NNN: {:04X}", _NNN);
     logger::Debug("NN: {:04X}", __NN);
-    logger::Debug("Instruction: {:04X}", _opcode >> 12);
+    logger::Debug("X: {:02X}", _X);
+    logger::Debug("Y: {:02X}", _Y);
     switch (_opcode >> 12)
     {
         case 0x0:
@@ -162,8 +167,8 @@ bool Chip8::DrawFlag()
 void Chip8::Reset()
 {
     std::fill(std::begin(_memory), std::end(_memory), 0);
-    std::fill(std::begin(_reg_V), std::end(_reg_V), 0);
-    _reg_I = 0;
+    std::fill(std::begin(_V), std::end(_V), 0);
+    _I = 0;
     _pc = 0x200;
     _delay_timer = 0;
     _sound_timer = 0;
@@ -188,13 +193,13 @@ void Chip8::Debug_Print(PrintMode pm = PrintMode::Hex)
         switch(pm)
         {
             case PrintMode::Dec:
-                logger::Print("V{:X}: {:03}     V{:X}: {:03}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
+                logger::Print("V{:X}: {:03}     V{:X}: {:03}\n", i, (_V[i]), i+n, (_V[i+n]));
                 break;
             case PrintMode::Hex:
-                logger::Print("V{:X}: {:02X}     V{:X}: {:02X}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
+                logger::Print("V{:X}: {:02X}     V{:X}: {:02X}\n", i, (_V[i]), i+n, (_V[i+n]));
                 break;
             case PrintMode::Bin:
-                logger::Print("V{:X}: {:08b}     V{:X}: {:08b}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
+                logger::Print("V{:X}: {:08b}     V{:X}: {:08b}\n", i, (_V[i]), i+n, (_V[i+n]));
                 break;
         }
     }
@@ -202,17 +207,17 @@ void Chip8::Debug_Print(PrintMode pm = PrintMode::Hex)
     switch(pm)
     {
         case PrintMode::Dec:
-            logger::Print("I: {:05}   PC: {:05}\n", _reg_I, _pc);
+            logger::Print("I: {:05}   PC: {:05}\n", _I, _pc);
             logger::Print("Delay Timer: {:03}   Sound Timer: {:03}\n", _delay_timer, _sound_timer);
             logger::Print("SP: {:05}\n", _sp);
             break;
         case PrintMode::Hex:
-            logger::Print("I: {:04X}   PC: {:04X}\n", _reg_I, _pc);
+            logger::Print("I: {:04X}   PC: {:04X}\n", _I, _pc);
             logger::Print("Delay Timer: {:02X}   Sound Timer: {:02X}\n", _delay_timer, _sound_timer);
             logger::Print("SP: {:04X}\n", _sp);
             break;
         case PrintMode::Bin:
-            logger::Print("I: {:016b}   PC: {:016b}\n", _reg_I, _pc);
+            logger::Print("I: {:016b}   PC: {:016b}\n", _I, _pc);
             logger::Print("Delay Timer: {:08b}   Sound Timer: {:08b}\n", _delay_timer, _sound_timer);
             logger::Print("SP: {:016b}\n", _sp);
             break;
@@ -259,7 +264,7 @@ void Chip8::Debug_PrintGfx()
 
 int Chip8::V_Size()
 {
-    return sizeof(_reg_V) / sizeof(_reg_V[0]);
+    return sizeof(_V) / sizeof(_V[0]);
 }
 
 void Chip8::IncrementProgramCounter(int n = 1)
@@ -272,7 +277,7 @@ void Chip8::IncrementProgramCounter(int n = 1)
 
 uint8_t (&Chip8::GetRegisters())[16]
 {
-    return _reg_V;
+    return _V;
 }
 
 void Chip8::Execute_0x0()
@@ -307,7 +312,7 @@ void Chip8::Execute_0x3()
     uint8_t n = 1;
     uint16_t X = 0x0F00 & _opcode;
     X >>= 8;
-    if (_reg_V[X] == __NN)
+    if (_V[X] == __NN)
     {
         n = 2; // skips the next instruction
     }
@@ -317,7 +322,7 @@ void Chip8::Execute_0x3()
 void Chip8::Execute_0x4()
 {
     uint8_t n = 1;
-    if (_reg_V[_X] != __NN)
+    if (_V[_X] != __NN)
     {
         n = 2; // skips the next instruction
     }
@@ -327,7 +332,7 @@ void Chip8::Execute_0x4()
 void Chip8::Execute_0x5()
 {
     uint8_t n = 1;
-    if (_reg_V[_X] == _reg_V[_Y])
+    if (_V[_X] == _V[_Y])
     {
         n = 2;
     }
@@ -336,19 +341,76 @@ void Chip8::Execute_0x5()
 
 void Chip8::Execute_0x6()
 {
-    _reg_V[_X] = __NN;
+    _V[_X] = __NN;
     IncrementProgramCounter();
 }
 
 void Chip8::Execute_0x7()
 {
-    _reg_V[_X] += __NN;
+    _V[_X] += __NN;
     IncrementProgramCounter();
 }
 
 void Chip8::Execute_0x8()
 {
-    
+    /*
+    |   18  | 8XY7      | Math      | Vx = Vy - Vx          | Sets VX to VY minus VX. VF is set to 0 when 
+    |       |           |           |                       | there's an underflow, and 1 otherwise
+    |   19  | 8XYE      | BitOp     | Vx <<= 1              | Shifts VX to the left by 1, then sets VF to 
+    |       |           |           |                       | 1 if the most significant bit of VX prior 
+    |       |           |           |                       | to that shift was set, or to 0 if it was 
+    |       |           |           |                       | unset
+    */
+   u_int16_t option = 0x000F & _opcode;
+   logger::Debug("option: {:0X}", option);
+   switch (option)
+   {
+    case 0x0:
+        _V[_X] = _V[_Y];
+        break;
+    case 0x1:
+        _V[_X] |= _V[_Y];
+        break;
+    case 0x2:
+        _V[_X] &= _V[_Y];
+        break;
+    case 0x3:
+        _V[_X] ^= _V[_Y];
+        break;
+    case 0x4:
+        _V[_X] += _V[_Y];
+        if (_V[_Y] > _V[_X])
+        {
+            VF_Flag();
+        }
+        else
+        {
+            VF_FlagClear();
+        }
+        break;
+    case 0x5:
+        if (_V[_Y] > _V[_X])
+        {
+            VF_FlagClear();
+        }
+        else
+        {
+            VF_Flag();
+        }
+        _V[_X] -= _V[_Y];
+        break;
+    case 0x6:
+        _V[0xF] = 0x0001 & _V[_X];
+        _V[_X] >>= 1;
+        break;
+    case 0x7:
+        break;
+    case 0xE:
+        break;
+    default:
+        logger::Warn("Unknown opcode {:04X}", _opcode);
+   }
+   IncrementProgramCounter();
 }
 
 void Chip8::Execute_0x9()
@@ -359,61 +421,17 @@ void Chip8::Execute_0x9()
 void Chip8::Execute_0xA()
 {
     logger::Debug("Executing ANNN");
-    logger::Debug("Before: I={:04X}", _reg_I);
-    _reg_I = 0x0;
-    _reg_I = _NNN;
-    logger::Debug("After: I={:04X}", _reg_I);
+    logger::Debug("Before: I={:04X}", _I);
+    _I = 0x0;
+    _I = _NNN;
+    logger::Debug("After: I={:04X}", _I);
     logger::Debug("Done ANNN");
     IncrementProgramCounter();
 }
 
 void Chip8::Execute_0xB()
 {
-    /*
-    |   13  | 8XY2      | BitOp     | Vx &= Vy              | Sets VX to VX and VY, bitwise AND
-    |   14  | 8XY3      | BitOp     | Vx ^= Vy              | Sets VX to VX xor VY, bitwise XOR
-    |   15  | 8XY4      | Math      | Vx += Vy              | Adds VY to VX. VF is set to 1 when 
-    |       |           |           |                       | overflow, 0 otherwise
-    |   16  | 8XY5      | Math      | Vx -= Vy              | VY is subtracted fom VX. VF is set to 0 
-    |       |           |           |                       | when there's underflow, 1 otherwise
-    |   17  | 8XY6      | BitOp     | Vx >>= 1              | Shifts VX to the right by 1, then stores 
-    |       |           |           |                       | the least significant bit of VX prior to 
-    |       |           |           |                       | the shift into VF
-    |   18  | 8XY7      | Math      | Vx = Vy - Vx          | Sets VX to VY minus VX. VF is set to 0 when 
-    |       |           |           |                       | there's an underflow, and 1 otherwise
-    |   19  | 8XYE      | BitOp     | Vx <<= 1              | Shifts VX to the left by 1, then sets VF to 
-    |       |           |           |                       | 1 if the most significant bit of VX prior 
-    |       |           |           |                       | to that shift was set, or to 0 if it was 
-    |       |           |           |                       | unset
-    */
-   u_int16_t option = 0x000F & _opcode;
-   switch (option)
-   {
-    case 0x0:
-        _reg_V[_X] = _reg_V[_Y];
-        break;
-    case 0x1:
-    // 8XY1      | BitOp     | Vx |= Vy              | Sets VX to VX or VY, bitwise OR
-        
-        break;
-    case 0x2:
-        break;
-    case 0x3:
-        break;
-    case 0x4:
-        break;
-    case 0x5:
-        break;
-    case 0x6:
-        break;
-    case 0x7:
-        break;
-    case 0xE:
-        break;
-    default:
-        logger::Warn("Unknown opcode {:04X}", _opcode);
-   }
-   IncrementProgramCounter();
+
 }
 
 void Chip8::Execute_0xC()
@@ -438,16 +456,25 @@ void Chip8::Execute_0xF()
 
 void Chip8::Get_X()
 {
-    _X = 0x0F00 & _opcode;
-    _X >>= 8;
+    _X = _opcode >> 8;
+    _X &= 0x0F;
 }
 
 void Chip8::Get_Y()
 {
-    _Y = 0x00F0 & _opcode;
-    _Y >>= 4;
+    _Y = _opcode >> 4;
+    _Y &= 0x0F;
 }
 
+void Chip8::VF_Flag()
+{
+    _V[0xF] = 0x1;
+}
+
+void Chip8::VF_FlagClear()
+{
+    _V[0xF] = 0x0;
+}
 
 /*
 Notes:

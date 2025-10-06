@@ -11,16 +11,18 @@ int main(int argc, char* argv[])
     Chip8 chip8;
     chip8.GetRegisters()[0] = 0xBB;
     chip8.GetRegisters()[1] = 0xFF;
-    uint8_t* my = chip8.GetRegisters();
-    my[0x4] = 0xFF;
-    my[0xF] = 0xFE;
-    my[0xB] = 0xFE;
-    my[0xA] = 0xBF;
-    my[0xC] = 0xCE;
-    chip8._memory[chip8._pc] = 0x3B;//0xA2;
-    chip8._memory[chip8._pc + 1] = 0x70;//0xF0;
+    uint8_t* V = chip8.GetRegisters();
+    V[0x4] = 0xFF;
+    V[0xF] = 0xFE;
+    V[0xB] = 0xFE;
+    V[0xA] = 0xBF;
+    V[0xC] = 0xCE;
+    V[0x0] = 0x68;
+    V[0x1] = 0x01;
+    chip8._memory[chip8._pc] = 0x80;//0x3B;//0xA2;
+    chip8._memory[chip8._pc + 1] = 0x16;//0x70;//0xF0;
     chip8.Cycle();
-    logger::Debug("opcode: {:04X}", chip8._opcode);
+    
     chip8.Debug_Print(PrintMode::Hex);
 
 
