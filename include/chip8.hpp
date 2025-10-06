@@ -298,24 +298,40 @@ void Chip8::Execute_0x2()
 
 void Chip8::Execute_0x3()
 {
-    //|   06  | 3XNN      | Cond      | if (Vx == NN)         | Skips the next instruction if VX equals NN
-    
+    uint8_t n = 1;
     uint16_t X = 0x0F00 & _opcode;
-    logger::Debug("X={:04X}", X);
     X >>= 8;
-    logger::Debug("X={:04X}", X);
-    
-
+    if (_reg_V[X] == __NN)
+    {
+        n = 2; // skips the next instruction
+    }
+    IncrementProgramCounter(n);
 }
 
 void Chip8::Execute_0x4()
 {
-    
+    uint8_t n = 1;
+    uint16_t X = 0x0F00 & _opcode;
+    X >>= 8;
+    if (_reg_V[X] != __NN)
+    {
+        n = 2; // skips the next instruction
+    }
+    IncrementProgramCounter(n);
 }
 
 void Chip8::Execute_0x5()
 {
-    
+    uint8_t n = 1;
+    uint16_t X = 0x0F00 & _opcode;
+    uint16_t Y = 0x00F0 & _opcode;
+    X >>= 8;
+    Y >>= 4;
+    if (_reg_V[X] == _reg_V[Y])
+    {
+        n = 2;
+    }
+    IncrementProgramCounter(n);
 }
 
 void Chip8::Execute_0x6()
@@ -435,8 +451,8 @@ Notes:
             |   03  | 00EE      | Flow      | return;               | Returns from a subroutine
         Y   |   04  | 1NNN      | Flow      | goto NNN;             | Jumps to address NNN
             |   05  | 2NNN      | Flow      | *(0xNNN)()            | Calls subroutine at NNN
-            |   06  | 3XNN      | Cond      | if (Vx == NN)         | Skips the next instruction if VX equals NN
-            |   07  | 4XNN      | Cond      | if (Vx != NN)         | Skips the next instruction if VX does not 
+        Y   |   06  | 3XNN      | Cond      | if (Vx == NN)         | Skips the next instruction if VX equals NN
+        Y   |   07  | 4XNN      | Cond      | if (Vx != NN)         | Skips the next instruction if VX does not 
             |       |           |           |                       | equal NN
             |   08  | 5XY0      | Cond      | if (Vx == Vy)         | Skips the next instruction if VX equals VY
             |   09  | 6XNN      | Const     | Vx = NN               | Sets VX to NN
