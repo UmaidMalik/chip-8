@@ -16,15 +16,14 @@ class Chip8
     private:
         uint8_t _memory[4096];
         uint8_t _reg_V[16];
-        uint16_t _reg_I;
-        uint16_t _pc;
-        uint8_t _delay_timer;
-        uint8_t _sound_timer;
+        uint16_t _reg_I = 0;
+        uint16_t _pc = 0;
+        uint8_t _delay_timer = 0;
+        uint8_t _sound_timer = 0;
         uint16_t _stack[16];
-        uint16_t _sp;
+        uint16_t _sp = 0;
         uint8_t _key[16];
         uint8_t _gfx[64 * 32];
-        Logger log;
 
     private:
         int V_Size();    
@@ -40,16 +39,18 @@ class Chip8
 
 Chip8::Chip8()
 {
-    log.Info("Chip8 constructor called");
+    logger::Info("Chip8 constructor called");
     for (int i = 0; i < V_Size(); i++)
     {
         _reg_V[i] = 0;
+        _key[i] = 0;
+        _stack[i] = 0;
     }
 }
 
 Chip8::~Chip8()
 {
-    log.Info("Chip8 destructor called");
+    logger::Info("Chip8 destructor called");
 }
 
 void Chip8::LoadROM(const std::string& filename)
@@ -70,13 +71,57 @@ void Chip8::Debug_Print(PrintMode pm = PrintMode::Hex)
         switch(pm)
         {
             case PrintMode::Dec:
-                log.Print("V{:X}: {:03}     V{:X}: {:03}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
+                logger::Print("V{:X}: {:03}     V{:X}: {:03}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
                 break;
             case PrintMode::Hex:
-                log.Print("V{:X}: {:02X}     V{:X}: {:02X}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
+                logger::Print("V{:X}: {:02X}     V{:X}: {:02X}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
                 break;
             case PrintMode::Bin:
-                log.Print("V{:X}: {:08b}     V{:X}: {:08b}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
+                logger::Print("V{:X}: {:08b}     V{:X}: {:08b}\n", i, (_reg_V[i]), i+n, (_reg_V[i+n]));
+                break;
+        }
+    }
+    logger::Print("\n");
+    /*
+        uint16_t _reg_I = 0;
+        uint16_t _pc = 0;
+        uint8_t _delay_timer = 0;
+        uint8_t _sound_timer = 0;
+        uint16_t _stack[16];
+        uint16_t _sp = 0;
+    */
+    switch(pm)
+    {
+        case PrintMode::Dec:
+            logger::Print("I: {:05}   PC: {:05}\n", _reg_I, _pc);
+            logger::Print("Delay Timer: {:03}   Sound Timer: {:03}\n", _delay_timer, _sound_timer);
+            logger::Print("SP: {:05}\n", _sp);
+            break;
+        case PrintMode::Hex:
+            logger::Print("I: {:04X}   PC: {:04X}\n", _reg_I, _pc);
+            logger::Print("Delay Timer: {:02X}   Sound Timer: {:02X}\n", _delay_timer, _sound_timer);
+            logger::Print("SP: {:04X}\n", _sp);
+            break;
+        case PrintMode::Bin:
+            logger::Print("I: {:016b}   PC: {:016b}\n", _reg_I, _pc);
+            logger::Print("Delay Timer: {:08b}   Sound Timer: {:08b}\n", _delay_timer, _sound_timer);
+            logger::Print("SP: {:016b}\n", _sp);
+            break;
+    }
+    n = n / 2;
+    logger::Print("\n");
+    for (int i = 0; i < n; i++)
+    {
+        switch(pm)
+        {
+            case PrintMode::Dec:
+                logger::Print("S{:X}: {:05}     S{:X}: {:05}    S{:X}: {:05}    S{:X}: {:05}\n", i, _stack[i], i+n, _stack[i+n], i+(n*2), _stack[i+(n*2)], i+(n*3), _stack[i+(n*3)]);
+                break;
+            case PrintMode::Hex:
+                logger::Print("S{:X}: {:04X}     S{:X}: {:04X}    S{:X}: {:04X}    S{:X}: {:04X}\n", i, _stack[i], i+n, _stack[i+n], i+(n*2), _stack[i+(n*2)], i+(n*3), _stack[i+(n*3)]);
+                break;
+            case PrintMode::Bin:
+                logger::Print("S{:X}: {:016b}     S{:X}: {:016b}    S{:X}: {:016b}    S{:X}: {:016b}\n", i, _stack[i], i+n, _stack[i+n], i+(n*2), _stack[i+(n*2)], i+(n*3), _stack[i+(n*3)]);
                 break;
         }
     }
