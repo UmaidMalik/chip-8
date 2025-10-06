@@ -334,7 +334,7 @@ void Chip8::Execute_0x5()
     uint8_t n = 1;
     if (_V[_X] == _V[_Y])
     {
-        n = 2;
+        n = 2; // skips the next instruction
     }
     IncrementProgramCounter(n);
 }
@@ -354,7 +354,6 @@ void Chip8::Execute_0x7()
 void Chip8::Execute_0x8()
 {
    u_int16_t option = 0x000F & _opcode;
-   logger::Debug("option: {:0X}", option);
    switch (option)
    {
     case 0x0:
@@ -418,7 +417,12 @@ void Chip8::Execute_0x8()
 
 void Chip8::Execute_0x9()
 {
-    
+    uint8_t n = 1;
+    if (_V[_X] != _V[_Y])
+    {
+        n = 2; // skips the next instruction
+    }
+    IncrementProgramCounter(n);
 }
 
 void Chip8::Execute_0xA()
@@ -434,7 +438,8 @@ void Chip8::Execute_0xA()
 
 void Chip8::Execute_0xB()
 {
-
+    //BNNN | Flow | PC = V0 + NNN| Jumps to the address NNN plus V0
+    _pc = _V[0x0] + _NNN;
 }
 
 void Chip8::Execute_0xC()
@@ -545,24 +550,24 @@ Notes:
         Y   |   08  | 5XY0      | Cond      | if (Vx == Vy)         | Skips the next instruction if VX equals VY
         Y   |   09  | 6XNN      | Const     | Vx = NN               | Sets VX to NN
         Y   |   10  | 7XNN      | Const     | Vx += NN              | Adds NN to Vx (carry flag is not changed)
-            |   11  | 8XY0      | Assig     | Vx = Vy               | Sets VX to the value of VY
-            |   12  | 8XY1      | BitOp     | Vx |= Vy              | Sets VX to VX or VY, bitwise OR
-            |   13  | 8XY2      | BitOp     | Vx &= Vy              | Sets VX to VX and VY, bitwise AND
-            |   14  | 8XY3      | BitOp     | Vx ^= Vy              | Sets VX to VX xor VY, bitwise XOR
-            |   15  | 8XY4      | Math      | Vx += Vy              | Adds VY to VX. VF is set to 1 when 
+        Y   |   11  | 8XY0      | Assig     | Vx = Vy               | Sets VX to the value of VY
+        Y   |   12  | 8XY1      | BitOp     | Vx |= Vy              | Sets VX to VX or VY, bitwise OR
+        Y   |   13  | 8XY2      | BitOp     | Vx &= Vy              | Sets VX to VX and VY, bitwise AND
+        Y   |   14  | 8XY3      | BitOp     | Vx ^= Vy              | Sets VX to VX xor VY, bitwise XOR
+        Y   |   15  | 8XY4      | Math      | Vx += Vy              | Adds VY to VX. VF is set to 1 when 
             |       |           |           |                       | overflow, 0 otherwise
-            |   16  | 8XY5      | Math      | Vx -= Vy              | VY is subtracted fom VX. VF is set to 0 
+        Y   |   16  | 8XY5      | Math      | Vx -= Vy              | VY is subtracted fom VX. VF is set to 0 
             |       |           |           |                       | when there's underflow, 1 otherwise
-            |   17  | 8XY6      | BitOp     | Vx >>= 1              | Shifts VX to the right by 1, then stores 
+        Y   |   17  | 8XY6      | BitOp     | Vx >>= 1              | Shifts VX to the right by 1, then stores 
             |       |           |           |                       | the least significant bit of VX prior to 
             |       |           |           |                       | the shift into VF
-            |   18  | 8XY7      | Math      | Vx = Vy - Vx          | Sets VX to VY minus VX. VF is set to 0 when 
+        Y   |   18  | 8XY7      | Math      | Vx = Vy - Vx          | Sets VX to VY minus VX. VF is set to 0 when 
             |       |           |           |                       | there's an underflow, and 1 otherwise
-            |   19  | 8XYE      | BitOp     | Vx <<= 1              | Shifts VX to the left by 1, then sets VF to 
+        Y   |   19  | 8XYE      | BitOp     | Vx <<= 1              | Shifts VX to the left by 1, then sets VF to 
             |       |           |           |                       | 1 if the most significant bit of VX prior 
             |       |           |           |                       | to that shift was set, or to 0 if it was 
             |       |           |           |                       | unset
-            |   20  | 9XY0      | Cond      | if (Vx != Vy)         | Skips the next instruction if VX does not 
+        Y   |   20  | 9XY0      | Cond      | if (Vx != Vy)         | Skips the next instruction if VX does not 
             |       |           |           |                       | equal VY
         Y   |   21  | ANNN      | MEM       | I = NNN               | Sets I to the address NNN
             |   22  | BNNN      | Flow      | PC = V0 + NNN         | Jumps to the address NNN plus V0
