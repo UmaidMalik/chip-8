@@ -27,6 +27,8 @@ class Chip8
         uint16_t _opcode = 0;
         uint16_t _NNN = 0;
         uint16_t __NN = 0;
+        uint16_t _X = 0;
+        uint16_t _Y = 0;
         bool _draw_flag = false;
     private:
         int V_Size();
@@ -46,7 +48,9 @@ class Chip8
         void Execute_0xC();
         void Execute_0xD();
         void Execute_0xE();
-        void Execute_0xF();    
+        void Execute_0xF();  
+        void Get_X();
+        void Get_Y();  
     public:
         Chip8();
         ~Chip8();
@@ -87,6 +91,8 @@ void Chip8::Cycle()
     // Execute opcode
     _NNN = 0x0FFF & _opcode;
     __NN = 0x00FF & _opcode;
+    Get_X();
+    Get_Y();
     logger::Debug("NNN: {:04X}", _NNN);
     logger::Debug("NN: {:04X}", __NN);
     logger::Debug("Instruction: {:04X}", _opcode >> 12);
@@ -311,9 +317,7 @@ void Chip8::Execute_0x3()
 void Chip8::Execute_0x4()
 {
     uint8_t n = 1;
-    uint16_t X = 0x0F00 & _opcode;
-    X >>= 8;
-    if (_reg_V[X] != __NN)
+    if (_reg_V[_X] != __NN)
     {
         n = 2; // skips the next instruction
     }
@@ -323,11 +327,7 @@ void Chip8::Execute_0x4()
 void Chip8::Execute_0x5()
 {
     uint8_t n = 1;
-    uint16_t X = 0x0F00 & _opcode;
-    uint16_t Y = 0x00F0 & _opcode;
-    X >>= 8;
-    Y >>= 4;
-    if (_reg_V[X] == _reg_V[Y])
+    if (_reg_V[_X] == _reg_V[_Y])
     {
         n = 2;
     }
@@ -336,12 +336,14 @@ void Chip8::Execute_0x5()
 
 void Chip8::Execute_0x6()
 {
-    
+    _reg_V[_X] = __NN;
+    IncrementProgramCounter();
 }
 
 void Chip8::Execute_0x7()
 {
-    
+    _reg_V[_X] += __NN;
+    IncrementProgramCounter();
 }
 
 void Chip8::Execute_0x8()
@@ -367,7 +369,51 @@ void Chip8::Execute_0xA()
 
 void Chip8::Execute_0xB()
 {
-    
+    /*
+    |   13  | 8XY2      | BitOp     | Vx &= Vy              | Sets VX to VX and VY, bitwise AND
+    |   14  | 8XY3      | BitOp     | Vx ^= Vy              | Sets VX to VX xor VY, bitwise XOR
+    |   15  | 8XY4      | Math      | Vx += Vy              | Adds VY to VX. VF is set to 1 when 
+    |       |           |           |                       | overflow, 0 otherwise
+    |   16  | 8XY5      | Math      | Vx -= Vy              | VY is subtracted fom VX. VF is set to 0 
+    |       |           |           |                       | when there's underflow, 1 otherwise
+    |   17  | 8XY6      | BitOp     | Vx >>= 1              | Shifts VX to the right by 1, then stores 
+    |       |           |           |                       | the least significant bit of VX prior to 
+    |       |           |           |                       | the shift into VF
+    |   18  | 8XY7      | Math      | Vx = Vy - Vx          | Sets VX to VY minus VX. VF is set to 0 when 
+    |       |           |           |                       | there's an underflow, and 1 otherwise
+    |   19  | 8XYE      | BitOp     | Vx <<= 1              | Shifts VX to the left by 1, then sets VF to 
+    |       |           |           |                       | 1 if the most significant bit of VX prior 
+    |       |           |           |                       | to that shift was set, or to 0 if it was 
+    |       |           |           |                       | unset
+    */
+   u_int16_t option = 0x000F & _opcode;
+   switch (option)
+   {
+    case 0x0:
+        _reg_V[_X] = _reg_V[_Y];
+        break;
+    case 0x1:
+    // 8XY1      | BitOp     | Vx |= Vy              | Sets VX to VX or VY, bitwise OR
+        
+        break;
+    case 0x2:
+        break;
+    case 0x3:
+        break;
+    case 0x4:
+        break;
+    case 0x5:
+        break;
+    case 0x6:
+        break;
+    case 0x7:
+        break;
+    case 0xE:
+        break;
+    default:
+        logger::Warn("Unknown opcode {:04X}", _opcode);
+   }
+   IncrementProgramCounter();
 }
 
 void Chip8::Execute_0xC()
@@ -388,6 +434,18 @@ void Chip8::Execute_0xE()
 void Chip8::Execute_0xF()
 {
     
+}
+
+void Chip8::Get_X()
+{
+    _X = 0x0F00 & _opcode;
+    _X >>= 8;
+}
+
+void Chip8::Get_Y()
+{
+    _Y = 0x00F0 & _opcode;
+    _Y >>= 4;
 }
 
 
@@ -454,9 +512,9 @@ Notes:
         Y   |   06  | 3XNN      | Cond      | if (Vx == NN)         | Skips the next instruction if VX equals NN
         Y   |   07  | 4XNN      | Cond      | if (Vx != NN)         | Skips the next instruction if VX does not 
             |       |           |           |                       | equal NN
-            |   08  | 5XY0      | Cond      | if (Vx == Vy)         | Skips the next instruction if VX equals VY
-            |   09  | 6XNN      | Const     | Vx = NN               | Sets VX to NN
-            |   10  | 7XNN      | Const     | Vx += NN              | Adds NN to Vx (carry flag is not changed)
+        Y   |   08  | 5XY0      | Cond      | if (Vx == Vy)         | Skips the next instruction if VX equals VY
+        Y   |   09  | 6XNN      | Const     | Vx = NN               | Sets VX to NN
+        Y   |   10  | 7XNN      | Const     | Vx += NN              | Adds NN to Vx (carry flag is not changed)
             |   11  | 8XY0      | Assig     | Vx = Vy               | Sets VX to the value of VY
             |   12  | 8XY1      | BitOp     | Vx |= Vy              | Sets VX to VX or VY, bitwise OR
             |   13  | 8XY2      | BitOp     | Vx &= Vy              | Sets VX to VX and VY, bitwise AND
