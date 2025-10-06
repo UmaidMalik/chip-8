@@ -30,7 +30,7 @@ class Chip8
         bool _draw_flag = false;
     private:
         int V_Size();
-        void IncrementProgramCount();
+        void IncrementProgramCounter(int n);
         void Execute_0x0();
         void Execute_0x1();
         void Execute_0x2();
@@ -145,7 +145,7 @@ void Chip8::Cycle()
 
     // update timers
 
-    IncrementProgramCount();
+    
 }
 
 bool Chip8::DrawFlag()
@@ -256,9 +256,12 @@ int Chip8::V_Size()
     return sizeof(_reg_V) / sizeof(_reg_V[0]);
 }
 
-void Chip8::IncrementProgramCount()
+void Chip8::IncrementProgramCounter(int n = 1)
 {
-    _pc += 2;
+    for (int i = 0; i < n; i++)
+    {
+        _pc += 2;
+    }
 }
 
 uint8_t (&Chip8::GetRegisters())[16]
@@ -271,6 +274,7 @@ void Chip8::Execute_0x0()
     if (_opcode == 0x00E0)
     {
         ClearScreen();
+        IncrementProgramCounter();
     }
     else if (_opcode == 0x00EE)
     {
@@ -284,7 +288,7 @@ void Chip8::Execute_0x0()
 
 void Chip8::Execute_0x1()
 {
-    
+    _pc = _NNN;
 }
 
 void Chip8::Execute_0x2()
@@ -294,7 +298,14 @@ void Chip8::Execute_0x2()
 
 void Chip8::Execute_0x3()
 {
+    //|   06  | 3XNN      | Cond      | if (Vx == NN)         | Skips the next instruction if VX equals NN
     
+    uint16_t X = 0x0F00 & _opcode;
+    logger::Debug("X={:04X}", X);
+    X >>= 8;
+    logger::Debug("X={:04X}", X);
+    
+
 }
 
 void Chip8::Execute_0x4()
@@ -335,6 +346,7 @@ void Chip8::Execute_0xA()
     _reg_I = _NNN;
     logger::Debug("After: I={:04X}", _reg_I);
     logger::Debug("Done ANNN");
+    IncrementProgramCounter();
 }
 
 void Chip8::Execute_0xB()
@@ -421,7 +433,7 @@ Notes:
             |   01  | 0NNN      | Call      |                       | Calls machine code routing at address NNN
         Y   |   02  | 00E0      | Display   | disp_clear()          | Clears the screen
             |   03  | 00EE      | Flow      | return;               | Returns from a subroutine
-            |   04  | 1NNN      | Flow      | goto NNN;             | Jumps to address NNN
+        Y   |   04  | 1NNN      | Flow      | goto NNN;             | Jumps to address NNN
             |   05  | 2NNN      | Flow      | *(0xNNN)()            | Calls subroutine at NNN
             |   06  | 3XNN      | Cond      | if (Vx == NN)         | Skips the next instruction if VX equals NN
             |   07  | 4XNN      | Cond      | if (Vx != NN)         | Skips the next instruction if VX does not 

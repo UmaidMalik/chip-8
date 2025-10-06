@@ -17,8 +17,8 @@ int main(int argc, char* argv[])
     my[0xB] = 0xFE;
     my[0xA] = 0xBF;
     my[0xC] = 0xCE;
-    chip8._memory[chip8._pc] = 0xA2;
-    chip8._memory[chip8._pc + 1] = 0xF0;
+    chip8._memory[chip8._pc] = 0x3B;//0xA2;
+    chip8._memory[chip8._pc + 1] = 0x70;//0xF0;
     chip8.Cycle();
     logger::Debug("opcode: {:04X}", chip8._opcode);
     chip8.Debug_Print(PrintMode::Hex);
