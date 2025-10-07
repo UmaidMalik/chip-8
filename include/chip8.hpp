@@ -504,11 +504,32 @@ void Chip8::Execute_0xD()
             }
         }
     }
+    IncrementProgramCounter()
 }
 
 void Chip8::Execute_0xE()
 {
-    
+   uint8_t k = _V[_X];
+   k &= 0x0F;
+   uint8_t n = 1;
+   switch (_opcode & 0x00FF)
+   {
+    case 0x9E:
+        if (_key[k] == 0x1)
+        {
+            n = 2;
+        }
+        break;
+    case 0xA1:
+        if (_key[k] != 0x1)
+        {
+            n = 2;
+        }
+    default:
+        logger::Warn("Unknown opcode {:04X}", _opcode);
+        break;
+   }
+   IncrementProgramCounter(n);
 }
 
 void Chip8::Execute_0xF()
