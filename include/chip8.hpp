@@ -164,11 +164,7 @@ void Chip8::Cycle()
             Execute_0xF();
             break;
     }
-
-
-    // update timers
-
-    
+    UpdateTimers();
 }
 
 bool Chip8::DrawFlag()
