@@ -102,6 +102,7 @@ class Chip8
         uint8_t &GetSoundTimer();
         void SetDelayTimer(uint8_t t);
         void SetSoundTimer(uint8_t t);
+        void SetKey(uint8_t k);
 };
 
 Chip8::Chip8()
@@ -380,6 +381,11 @@ void Chip8::SetSoundTimer(uint8_t t)
     _sound_timer = t;
 }
 
+void Chip8::SetKey(uint8_t k)
+{
+
+}
+
 void Chip8::Execute_0x0()
 {
     if (_opcode == 0x00E0)
@@ -605,13 +611,6 @@ void Chip8::Execute_0xE()
 void Chip8::Execute_0xF()
 {
 /*
-|FX33|BCD  |set_BCD(Vx)         | Stores the BCD representation of VX, with 
-|    |     |*(I+0) =            | the hundreds digit in memory at location 
-|    |     |BCD(3);             | in I, the tens at location I+1, and the 
-|    |     |*(I+1) =            | ones digit at location I+2
-|    |     |BCD(2);             |
-|    |     |*(I+2) =            |
-|    |     |BCD(1);             |
 |FX55|MEM  |reg_dump(Vx, &I)    | Stores from V0 to VX (inclusive) in memory, 
 |    |     |                    | starting at address I, The offset from I is
 |    |     |                    | inscreased by 1 for each value written, 
@@ -659,6 +658,9 @@ void Chip8::Execute_0xF()
             _I = _fontset_start + (font_char * 0x05);
             break;
         case 0x33:
+            _memory[_I] = _V[_X] / 100;
+            _memory[_I + 1] = (_V[_X] / 10) % 10;
+            _memory[_I + 2] = (_V[_X] / 100) % 10;
             break;
         case 0x55:
             break;
