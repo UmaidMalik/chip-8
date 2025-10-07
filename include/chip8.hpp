@@ -27,6 +27,7 @@ class Chip8
         uint16_t _stack[16];
         uint16_t _sp = 0;
         uint8_t _key[16];
+        uint8_t _prev_key[16];
         uint8_t _gfx[64 * 32];
         uint16_t _opcode = 0;
         uint16_t _NNN = 0;
@@ -37,6 +38,7 @@ class Chip8
         bool _draw_flag = false;
     private:
         int V_Size();
+        int KeySize();
         void IncrementProgramCounter(int n);
         void Execute_0x0();
         void Execute_0x1();
@@ -58,6 +60,7 @@ class Chip8
         void Get_Y();
         void VF_Flag();
         void VF_FlagClear();
+        void CopyKeysToPrev();
     public:
         Chip8();
         ~Chip8();
@@ -69,6 +72,8 @@ class Chip8
         void Debug_Print(PrintMode pm);
         void Debug_PrintGfx();
         uint8_t (&GetRegisters())[16];
+        uint8_t &GetDelayTimer();
+        uint8_t &GetSoundTimer();
 };
 
 Chip8::Chip8()
@@ -179,6 +184,7 @@ void Chip8::Reset()
     std::fill(std::begin(_stack), std::end(_stack), 0);
     _sp = 0;
     std::fill(std::begin(_key), std::end(_key), 0);
+    std::fill(std::begin(_prev_key), std::end(_prev_key), 0);
     std::fill(std::begin(_gfx), std::end(_gfx), 0);
     _opcode = 0;
     _draw_flag = false;
@@ -301,6 +307,11 @@ int Chip8::V_Size()
     return sizeof(_V) / sizeof(_V[0]);
 }
 
+int Chip8::KeySize()
+{
+    return sizeof(_key) / sizeof(_key[0]);
+}
+
 void Chip8::IncrementProgramCounter(int n = 1)
 {
     for (int i = 0; i < n; i++)
@@ -312,6 +323,16 @@ void Chip8::IncrementProgramCounter(int n = 1)
 uint8_t (&Chip8::GetRegisters())[16]
 {
     return _V;
+}
+
+uint8_t& Chip8::GetDelayTimer()
+{
+    return _delay_timer;
+}
+
+uint8_t& Chip8::GetSoundTimer()
+{
+    return _sound_timer;
 }
 
 void Chip8::Execute_0x0()
@@ -504,7 +525,7 @@ void Chip8::Execute_0xD()
             }
         }
     }
-    IncrementProgramCounter()
+    IncrementProgramCounter();
 }
 
 void Chip8::Execute_0xE()
@@ -534,7 +555,66 @@ void Chip8::Execute_0xE()
 
 void Chip8::Execute_0xF()
 {
-    
+/*
+|FX15|Timer|delay_timer(Vx)     | Sets the delay timer to VX
+|FX18|Sound|sound_timer(Vx)     | Sets the sound timer to VX
+|FX1E|MEM  |I += Vx             | Adds VX to I. VF is not affected
+|FX29|MEM  |I = sprite_addr[Vcx]| Sets I to the location of the sprite for 
+|    |     |                    | the character in VX(only consided the 
+|    |     |                    | lowest nibble) Characters 0-F are 
+|    |     |                    | represented by a 4x5 font
+|FX33|BCD  |set_BCD(Vx)         | Stores the BCD representation of VX, with 
+|    |     |*(I+0) =            | the hundreds digit in memory at location 
+|    |     |BCD(3);             | in I, the tens at location I+1, and the 
+|    |     |*(I+1) =            | ones digit at location I+2
+|    |     |BCD(2);             |
+|    |     |*(I+2) =            |
+|    |     |BCD(1);             |
+|FX55|MEM  |reg_dump(Vx, &I)    | Stores from V0 to VX (inclusive) in memory, 
+|    |     |                    | starting at address I, The offset from I is
+|    |     |                    | inscreased by 1 for each value written, 
+|    |     |                    | but I is not modified
+|FX65|MEM  |reg_load(Vx, &I)    | Fills from V0 to VX (inclusive) with values 
+|    |     |                    | from memory, starting at address I. The 
+|    |     |                    | offset from I is increased by 1 for each 
+|    |     |                    | value read, but I is not modified
+*/
+    uint8_t n = 1;
+    switch (_opcode & 0x00FF)
+    {
+        case 0x07:
+            _V[_X] = GetDelayTimer();
+            break;
+        case 0x0A:
+            n = 0;
+            // will need to test this
+        /*
+            |FX0A|KeyOp|Vx = get_key()      | A key press is awaited, and then stored 
+            |    |     |                    | in VX (blocking opration, all instruction 
+            |    |     |                    | halted untile next key event, delay and 
+            |    |     |                    | sound timers should continue processing)
+        */
+
+            break;
+        case 0x15:
+            break;
+        case 0x18:
+            break;
+        case 0x1E:
+            break;
+        case 0x29:
+            break;
+        case 0x33:
+            break;
+        case 0x55:
+            break;
+        case 0x65:
+            break;
+        default:
+            logger::Warn("Unknown opcode {:04X}", _opcode);
+            break;
+    }
+    IncrementProgramCounter(n);
 }
 
 void Chip8::Get_X()
@@ -557,6 +637,14 @@ void Chip8::VF_Flag()
 void Chip8::VF_FlagClear()
 {
     _V[0xF] = 0x0;
+}
+
+void Chip8::CopyKeysToPrev()
+{
+    for(int i = 0; i < KeySize(); i++)
+    {
+        _prev_key[i] = _key[i];
+    }
 }
 
 /*
@@ -648,7 +736,7 @@ Notes:
         Y   |   22  | BNNN      | Flow      | PC = V0 + NNN         | Jumps to the address NNN plus V0
         Y   |   23  | CXNN      | Rand      | Vx = rand() & NN      | Sets VX to the result of a bitwise AND on
             |       |           |           |                       | a random rumber and NN 
-            |   24  | DXYN      | Display   | draw(Vx, Vy, N)       | Draws a sprite at coordinate (VX, VY) that 
+        Y   |   24  | DXYN      | Display   | draw(Vx, Vy, N)       | Draws a sprite at coordinate (VX, VY) that 
             |       |           |           |                       | has a width of 8px and height of Npx. Each
             |       |           |           |                       | row of 8 pixels is read as bit-coded 
             |       |           |           |                       | starting from memory location I. I values 
@@ -656,10 +744,10 @@ Notes:
             |       |           |           |                       | set to 1 if any screen pixels are flipped 
             |       |           |           |                       | from set to unset when set to unset when 
             |       |           |           |                       | the sprite is drawn, and 0 otherwise
-            |   25  | EX9E      | KeyOp     | if (key() == Vx)      | Skips the next instruction if the key 
+        Y   |   25  | EX9E      | KeyOp     | if (key() == Vx)      | Skips the next instruction if the key 
             |       |           |           |                       | stored in VX(only consider the lowest 
             |       |           |           |                       | nibble) is pressed
-            |   26  | EXA1      | KeyOp     | if (key() != Vx)      | Skips the next instruction if the key 
+        Y   |   26  | EXA1      | KeyOp     | if (key() != Vx)      | Skips the next instruction if the key 
             |       |           |           |                       | stored in VX(only consided the lowest 
             |       |           |           |                       | nibble) is not pressed
             |   27  | FX07      | Timer     | Vx = get_delay()      | Sets VX to the value of the delay timer
