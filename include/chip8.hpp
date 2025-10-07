@@ -112,8 +112,8 @@ void Chip8::Cycle()
     Get_Y();
     logger::Debug("opcode: {:04X}", _opcode);
     logger::Debug("instruction: {:X}", _opcode >> 12);
-    logger::Debug("NNN: {:04X}", _NNN);
-    logger::Debug("NN: {:04X}", __NN);
+    logger::Debug("NNN: {:03X}", _NNN);
+    logger::Debug("NN: {:02X}", __NN);
     logger::Debug("X: {:02X}", _X);
     logger::Debug("Y: {:02X}", _Y);
     switch (_opcode >> 12)
@@ -361,7 +361,9 @@ void Chip8::Execute_0x0()
     }
     else if (_opcode == 0x00EE)
     {
-
+        _stack[_sp] = 0x0;
+        _sp--;
+        _pc = _stack[_sp];
     }
     else // otherwise 0x0NNN
     {
@@ -376,7 +378,9 @@ void Chip8::Execute_0x1()
 
 void Chip8::Execute_0x2()
 {
-    
+    _stack[_sp] = _pc;
+    _sp++;
+    _pc = _NNN;
 }
 
 void Chip8::Execute_0x3()
@@ -573,12 +577,6 @@ void Chip8::Execute_0xE()
 void Chip8::Execute_0xF()
 {
 /*
-|FX18|Sound|sound_timer(Vx)     | Sets the sound timer to VX
-|FX1E|MEM  |I += Vx             | Adds VX to I. VF is not affected
-|FX29|MEM  |I = sprite_addr[Vcx]| Sets I to the location of the sprite for 
-|    |     |                    | the character in VX(only consided the 
-|    |     |                    | lowest nibble) Characters 0-F are 
-|    |     |                    | represented by a 4x5 font
 |FX33|BCD  |set_BCD(Vx)         | Stores the BCD representation of VX, with 
 |    |     |*(I+0) =            | the hundreds digit in memory at location 
 |    |     |BCD(3);             | in I, the tens at location I+1, and the 
@@ -602,7 +600,6 @@ void Chip8::Execute_0xF()
             _V[_X] = GetDelayTimer();
             break;
         case 0x0A:
-            n = 0;
             int pressed = -1;
             for (int k = 0; k < KeySize(); k++)
             {
@@ -614,19 +611,28 @@ void Chip8::Execute_0xF()
             }
             if (pressed == -1)
             {
+                n = 0;
                 return;
             }
             _V[_X] = pressed & 0x0F;
             break;
         case 0x15:
-        // FX15|Timer|delay_timer(Vx)     | Sets the delay timer to VX
-            
+            SetDelayTimer(_V[_X]);
             break;
         case 0x18:
+            SetSoundTimer(_V[_X]);
             break;
         case 0x1E:
+            _I += _V[_X];
             break;
         case 0x29:
+            /*
+            |FX29|MEM  |I = sprite_addr[Vcx]| Sets I to the location of the sprite for 
+            |    |     |                    | the character in VX(only consider the 
+            |    |     |                    | lowest nibble) Characters 0-F are 
+            |    |     |                    | represented by a 4x5 font
+            */
+            _I = 
             break;
         case 0x33:
             break;
@@ -744,9 +750,9 @@ Notes:
       done? |   #   | opcode    | type      | C pseudocode          | explanation
             |   01  | 0NNN      | Call      |                       | Calls machine code routing at address NNN
         Y   |   02  | 00E0      | Display   | disp_clear()          | Clears the screen
-            |   03  | 00EE      | Flow      | return;               | Returns from a subroutine
+        Y   |   03  | 00EE      | Flow      | return;               | Returns from a subroutine
         Y   |   04  | 1NNN      | Flow      | goto NNN;             | Jumps to address NNN
-            |   05  | 2NNN      | Flow      | *(0xNNN)()            | Calls subroutine at NNN
+        Y   |   05  | 2NNN      | Flow      | *(0xNNN)()            | Calls subroutine at NNN
         Y   |   06  | 3XNN      | Cond      | if (Vx == NN)         | Skips the next instruction if VX equals NN
         Y   |   07  | 4XNN      | Cond      | if (Vx != NN)         | Skips the next instruction if VX does not 
             |       |           |           |                       | equal NN
@@ -790,16 +796,16 @@ Notes:
         Y   |   26  | EXA1      | KeyOp     | if (key() != Vx)      | Skips the next instruction if the key 
             |       |           |           |                       | stored in VX(only consided the lowest 
             |       |           |           |                       | nibble) is not pressed
-            |   27  | FX07      | Timer     | Vx = get_delay()      | Sets VX to the value of the delay timer
-            |   28  | FX0A      | KeyOp     | Vx = get_key()        | A key press is awaited, and then stored 
+        Y   |   27  | FX07      | Timer     | Vx = get_delay()      | Sets VX to the value of the delay timer
+        Y   |   28  | FX0A      | KeyOp     | Vx = get_key()        | A key press is awaited, and then stored 
             |       |           |           |                       | in VX (blocking opration, all instruction 
-            |       |           |           |                       | halted untile next key event, delay and 
+            |       |           |           |                       | halted until next key event, delay and 
             |       |           |           |                       | sound timers should continue processing)
-            |   29  | FX15      | Timer     | delay_timer(Vx)       | Sets the delay timer to VX
-            |   30  | FX18      | Sound     | sound_timer(Vx)       | Sets the sound timer to VX
-            |   31  | FX1E      | MEM       | I += Vx               | Adds VX to I. VF is not affected
+        Y   |   29  | FX15      | Timer     | delay_timer(Vx)       | Sets the delay timer to VX
+        Y   |   30  | FX18      | Sound     | sound_timer(Vx)       | Sets the sound timer to VX
+        Y   |   31  | FX1E      | MEM       | I += Vx               | Adds VX to I. VF is not affected
             |   32  | FX29      | MEM       | I = sprite_addr[Vcx]  | Sets I to the location of the sprite for 
-            |       |           |           |                       | the character in VX(only consided the 
+            |       |           |           |                       | the character in VX(only consider the 
             |       |           |           |                       | lowest nibble) Characters 0-F are 
             |       |           |           |                       | represented by a 4x5 font
             |   33  | FX33      | BCD       | set_BCD(Vx)           | Stores the BCD representation of VX, with 
