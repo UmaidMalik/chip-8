@@ -93,9 +93,7 @@ void Chip8::Cycle()
     _opcode |= _memory[_pc]; // hi
     _opcode <<= 8; 
     _opcode  |= _memory[_pc + 1]; // lo
-    // Fetch opcode
-    // Decode opcode
-    // Execute opcode
+
     _NNN = 0x0FFF & _opcode;
     __NN = 0x00FF & _opcode;
     ___N = 0x000F & _opcode;
@@ -463,12 +461,8 @@ void Chip8::Execute_0x9()
 
 void Chip8::Execute_0xA()
 {
-    logger::Debug("Executing ANNN");
-    logger::Debug("Before: I={:04X}", _I);
-    _I = 0x0;
+    _I = 0x0000;
     _I = _NNN;
-    logger::Debug("After: I={:04X}", _I);
-    logger::Debug("Done ANNN");
     IncrementProgramCounter();
 }
 
