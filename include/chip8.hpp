@@ -622,13 +622,14 @@ void Chip8::Execute_0xF()
 |    |     |                    | value read, but I is not modified
 */
     uint8_t n = 1;
+    int pressed = -1;
+    uint8_t font_char = 0x0;
     switch (_opcode & 0x00FF)
     {
         case 0x07:
             _V[_X] = GetDelayTimer();
             break;
-        case 0x0A:
-            int pressed = -1;
+        case 0x0A:    
             for (int k = 0; k < KeySize(); k++)
             {
                 if (_key[k] == 0x1)
@@ -654,8 +655,8 @@ void Chip8::Execute_0xF()
             _I += _V[_X];
             break;
         case 0x29:
-            uint8_t c = _V[_X] & 0x0F;
-            _I = _fontset_start + (c * 0x05);
+            font_char = _V[_X] & 0x0F;
+            _I = _fontset_start + (font_char * 0x05);
             break;
         case 0x33:
             break;
