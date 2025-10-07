@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <iostream>
 #include <bitset>
+#include <cstdio>
 #include "logger.hpp"
 #include "random.hpp"
 
@@ -14,6 +15,7 @@ enum class PrintMode
 
 constexpr static int W = 64;
 constexpr static int H = 32;
+constexpr static uint16_t rom_start = 0x200;
 
 class Chip8
 {
@@ -21,7 +23,7 @@ class Chip8
         uint8_t _memory[4096];
         uint8_t _V[16];
         uint16_t _I = 0;
-        uint16_t _pc = 0x200;
+        uint16_t _pc = rom_start;
         uint8_t _delay_timer = 0;
         uint8_t _sound_timer = 0;
         uint16_t _stack[16];
@@ -89,7 +91,7 @@ class Chip8
     public:
         Chip8();
         ~Chip8();
-        void LoadROM(const std::string& filename);
+        bool LoadROM(const std::string& filename);
         void Cycle();
         bool DrawFlag();
         void Reset();
@@ -116,9 +118,39 @@ Chip8::~Chip8()
     logger::Info("Chip8 destructor called");
 }
 
-void Chip8::LoadROM(const std::string& filename)
+bool Chip8::LoadROM(const std::string& filename)
 {
+    FILE* file = fopen(filename.c_str(), "rb");
+    bool result = true;
+    if(file == nullptr)
+    {
+        logger::Error("Failed to open ROM: fopen resulted in nullptr");
+        return false;
+    }
+    std::fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    std::fseek(file, 0, SEEK_SET); 
+    
+    uint8_t* buffer = new uint8_t[file_size];
 
+    size_t bytes_read = fread(buffer, 1, file_size, file);
+
+    if (bytes_read == file_size)
+    {
+        for (size_t i = 0; i < bytes_read; i++)
+        {
+            _memory[rom_start + i] = buffer[i];
+        }
+    }
+    else
+    {
+        logger::Error("Failed to read ROM");
+        result = false;
+    }
+
+    delete[] buffer;
+    fclose(file);
+    return result;
 }
 
 void Chip8::Cycle()
@@ -203,7 +235,7 @@ void Chip8::Reset()
     std::fill(std::begin(_memory), std::end(_memory), 0);
     std::fill(std::begin(_V), std::end(_V), 0);
     _I = 0;
-    _pc = 0x200;
+    _pc = rom_start;
     _delay_timer = 0;
     _sound_timer = 0;
     std::fill(std::begin(_stack), std::end(_stack), 0);
@@ -611,10 +643,6 @@ void Chip8::Execute_0xE()
 void Chip8::Execute_0xF()
 {
 /*
-|FX55|MEM  |reg_dump(Vx, &I)    | Stores from V0 to VX (inclusive) in memory, 
-|    |     |                    | starting at address I, The offset from I is
-|    |     |                    | inscreased by 1 for each value written, 
-|    |     |                    | but I is not modified
 |FX65|MEM  |reg_load(Vx, &I)    | Fills from V0 to VX (inclusive) with values 
 |    |     |                    | from memory, starting at address I. The 
 |    |     |                    | offset from I is increased by 1 for each 
@@ -663,6 +691,12 @@ void Chip8::Execute_0xF()
             _memory[_I + 2] = (_V[_X] / 100) % 10;
             break;
         case 0x55:
+            /*
+            |FX55|MEM  |reg_dump(Vx, &I)    | Stores from V0 to VX (inclusive) in memory, 
+            |    |     |                    | starting at address I, The offset from I is
+            |    |     |                    | inscreased by 1 for each value written, 
+            |    |     |                    | but I is not modified
+            */
             break;
         case 0x65:
             break;
