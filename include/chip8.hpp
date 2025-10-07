@@ -13,7 +13,7 @@ enum class PrintMode
 };
 
 constexpr static int W = 64;
-constexpr static int H = 32; 
+constexpr static int H = 32;
 
 class Chip8
 {
@@ -28,7 +28,7 @@ class Chip8
         uint16_t _sp = 0;
         uint8_t _key[16];
         uint8_t _prev_key[16];
-        uint8_t _gfx[64 * 32];
+        uint8_t _gfx[W * H];
         uint16_t _opcode = 0;
         uint16_t _NNN = 0;
         uint16_t __NN = 0;
@@ -75,8 +75,11 @@ class Chip8
         void Debug_Print(PrintMode pm);
         void Debug_PrintGfx();
         uint8_t (&GetRegisters())[16];
+        uint8_t (&GetGfx())[W * H];
         uint8_t &GetDelayTimer();
         uint8_t &GetSoundTimer();
+        void SetDelayTimer(uint8_t t);
+        void SetSoundTimer(uint8_t t);
 };
 
 Chip8::Chip8()
@@ -324,6 +327,11 @@ uint8_t (&Chip8::GetRegisters())[16]
     return _V;
 }
 
+uint8_t (&Chip8::GetGfx())[W * H]
+{
+    return _gfx;
+}
+
 uint8_t& Chip8::GetDelayTimer()
 {
     return _delay_timer;
@@ -332,6 +340,16 @@ uint8_t& Chip8::GetDelayTimer()
 uint8_t& Chip8::GetSoundTimer()
 {
     return _sound_timer;
+}
+
+void Chip8::SetDelayTimer(uint8_t t)
+{
+
+}
+
+void Chip8::SetSoundTimer(uint8_t t)
+{
+
 }
 
 void Chip8::Execute_0x0()
@@ -555,7 +573,6 @@ void Chip8::Execute_0xE()
 void Chip8::Execute_0xF()
 {
 /*
-|FX15|Timer|delay_timer(Vx)     | Sets the delay timer to VX
 |FX18|Sound|sound_timer(Vx)     | Sets the sound timer to VX
 |FX1E|MEM  |I += Vx             | Adds VX to I. VF is not affected
 |FX29|MEM  |I = sprite_addr[Vcx]| Sets I to the location of the sprite for 
@@ -586,12 +603,13 @@ void Chip8::Execute_0xF()
             break;
         case 0x0A:
             n = 0;
-            bool pressed = -1;
+            int pressed = -1;
             for (int k = 0; k < KeySize(); k++)
             {
-                if (_key[k] != _prev_key[k])
+                if (_key[k] == 0x1)
                 {
                     pressed = k;
+                    break;
                 }
             }
             if (pressed == -1)
@@ -601,6 +619,8 @@ void Chip8::Execute_0xF()
             _V[_X] = pressed & 0x0F;
             break;
         case 0x15:
+        // FX15|Timer|delay_timer(Vx)     | Sets the delay timer to VX
+            
             break;
         case 0x18:
             break;
