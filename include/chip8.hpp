@@ -265,7 +265,37 @@ void Chip8::Debug_Print(PrintMode pm = PrintMode::Hex)
 
 void Chip8::Debug_PrintGfx()
 {
-
+    auto idx = [&](int x, int y)
+    {
+        return (y * W) + x;
+    };
+    for (size_t col = 0; col < W; col++)
+    {
+        logger::Print("_");
+    }
+    logger::Print("\n");
+    for (size_t row = 0; row < H; row++)
+    {
+        logger::Print("|");
+        for (size_t col = 0; col < W; col++)
+        {
+            int i = idx(col, row);
+            if (_gfx[i] != 0)
+            {
+                logger::Print("X");
+            }
+            else
+            {
+                logger::Print(" ");
+            }
+        }
+        logger::Print("|\n");
+    }
+    for (size_t col = 0; col < W; col++)
+    {
+        logger::Print("_");
+    }
+    logger::Print("\n");
 }
 
 int Chip8::V_Size()

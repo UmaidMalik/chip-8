@@ -24,7 +24,6 @@ int main(int argc, char* argv[])
     
     chip8.Debug_Print(PrintMode::Hex);
 
-
     if (!SDL_Init(SDL_INIT_VIDEO))
     {
 
