@@ -344,12 +344,12 @@ uint8_t& Chip8::GetSoundTimer()
 
 void Chip8::SetDelayTimer(uint8_t t)
 {
-
+    _delay_timer = t;
 }
 
 void Chip8::SetSoundTimer(uint8_t t)
 {
-
+    _sound_timer = t;
 }
 
 void Chip8::Execute_0x0()
@@ -379,7 +379,7 @@ void Chip8::Execute_0x1()
 void Chip8::Execute_0x2()
 {
     _stack[_sp] = _pc;
-    _sp++;
+    ++_sp;
     _pc = _NNN;
 }
 
