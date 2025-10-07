@@ -36,9 +36,30 @@ class Chip8
         uint8_t _X = 0;
         uint8_t _Y = 0;
         bool _draw_flag = false;
+        const uint8_t _fontset[80]
+        {
+            0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+            0x20, 0x60, 0x20, 0x20, 0x70, // 1
+            0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+            0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+            0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+            0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+            0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+            0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+            0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+            0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+            0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+            0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+            0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+            0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+            0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+            0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+        };
+        const size_t _fontset_start = 0x0;
     private:
         int V_Size();
         int KeySize();
+        int FontsetSize();
         void IncrementProgramCounter(int n);
         void Execute_0x0();
         void Execute_0x1();
@@ -64,6 +85,7 @@ class Chip8
         void UpdateDelayTimer();
         void UpdateSoundTimer();
         void UpdateTimers();
+        void InitFontset();
     public:
         Chip8();
         ~Chip8();
@@ -190,6 +212,7 @@ void Chip8::Reset()
     std::fill(std::begin(_gfx), std::end(_gfx), 0);
     _opcode = 0;
     _draw_flag = false;
+    InitFontset();
 }
 
 void Chip8::ClearScreen()
@@ -313,6 +336,11 @@ int Chip8::KeySize()
 {
     return sizeof(_key) / sizeof(_key[0]);
 }
+
+ int Chip8::FontsetSize()
+ {
+    return sizeof(_fontset) / sizeof(_fontset[0]);
+ }
 
 void Chip8::IncrementProgramCounter(int n = 1)
 {
@@ -626,13 +654,8 @@ void Chip8::Execute_0xF()
             _I += _V[_X];
             break;
         case 0x29:
-            /*
-            |FX29|MEM  |I = sprite_addr[Vcx]| Sets I to the location of the sprite for 
-            |    |     |                    | the character in VX(only consider the 
-            |    |     |                    | lowest nibble) Characters 0-F are 
-            |    |     |                    | represented by a 4x5 font
-            */
-            _I = 
+            uint8_t c = _V[_X] & 0x0F;
+            _I = _fontset_start + (c * 0x05);
             break;
         case 0x33:
             break;
@@ -679,18 +702,32 @@ void Chip8::CopyKeysToPrev()
 
 void Chip8::UpdateDelayTimer()
 {
-    _delay_timer -= 0x01;
+    if (_delay_timer > 0)
+    {    
+        _delay_timer--;
+    }
 }
 
 void Chip8::UpdateSoundTimer()
 {
-    _sound_timer -= 0x01;
+    if (_sound_timer > 0)
+    {
+        _sound_timer--;
+    }
 }
 
 void Chip8::UpdateTimers()
 {
     UpdateDelayTimer();
     UpdateSoundTimer();
+}
+
+void Chip8::InitFontset()
+{
+    for (int i = 0; i < FontsetSize(); i++)
+    {
+        _memory[i] = _fontset[i];
+    }
 }
 
 /*
