@@ -642,12 +642,6 @@ void Chip8::Execute_0xE()
 
 void Chip8::Execute_0xF()
 {
-/*
-|FX65|MEM  |reg_load(Vx, &I)    | Fills from V0 to VX (inclusive) with values 
-|    |     |                    | from memory, starting at address I. The 
-|    |     |                    | offset from I is increased by 1 for each 
-|    |     |                    | value read, but I is not modified
-*/
     uint8_t n = 1;
     int pressed = -1;
     uint8_t font_char = 0x0;
@@ -691,14 +685,16 @@ void Chip8::Execute_0xF()
             _memory[_I + 2] = (_V[_X] / 100) % 10;
             break;
         case 0x55:
-            /*
-            |FX55|MEM  |reg_dump(Vx, &I)    | Stores from V0 to VX (inclusive) in memory, 
-            |    |     |                    | starting at address I, The offset from I is
-            |    |     |                    | inscreased by 1 for each value written, 
-            |    |     |                    | but I is not modified
-            */
+            for (int X = 0; X <= _X; X++)
+            {
+                _memory[_I + X] = _V[X];
+            }
             break;
         case 0x65:
+            for (int X = 0; X <= _X; X++)
+            {
+                _V[X] = _memory[_I + X];
+            }
             break;
         default:
             logger::Warn("Unknown opcode {:04X}", _opcode);
@@ -891,7 +887,7 @@ Notes:
             |       |           |           | BCD(1);               |
             |   34  | FX55      | MEM       | reg_dump(Vx, &I)      | Stores from V0 to VX (inclusive) in memory, 
             |       |           |           |                       | starting at address I, The offset from I is
-            |       |           |           |                       | inscreased by 1 for each value written, 
+            |       |           |           |                       | increased by 1 for each value written, 
             |       |           |           |                       | but I is not modified
             |   35  | FX65      | MEM       | reg_load(Vx, &I)      | Fills from V0 to VX (inclusive) with values 
             |       |           |           |                       | from memory, starting at address I. The 
