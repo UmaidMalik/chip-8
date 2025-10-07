@@ -61,6 +61,9 @@ class Chip8
         void VF_Flag();
         void VF_FlagClear();
         void CopyKeysToPrev();
+        void UpdateDelayTimer();
+        void UpdateSoundTimer();
+        void UpdateTimers();
     public:
         Chip8();
         ~Chip8();
@@ -587,14 +590,19 @@ void Chip8::Execute_0xF()
             break;
         case 0x0A:
             n = 0;
-            // will need to test this
-        /*
-            |FX0A|KeyOp|Vx = get_key()      | A key press is awaited, and then stored 
-            |    |     |                    | in VX (blocking opration, all instruction 
-            |    |     |                    | halted untile next key event, delay and 
-            |    |     |                    | sound timers should continue processing)
-        */
-
+            bool pressed = -1;
+            for (int k = 0; k < KeySize(); k++)
+            {
+                if (_key[k] != _prev_key[k])
+                {
+                    pressed = k;
+                }
+            }
+            if (pressed == -1)
+            {
+                return;
+            }
+            _V[_X] = pressed & 0x0F;
             break;
         case 0x15:
             break;
@@ -645,6 +653,22 @@ void Chip8::CopyKeysToPrev()
     {
         _prev_key[i] = _key[i];
     }
+}
+
+void Chip8::UpdateDelayTimer()
+{
+    _delay_timer -= 0x01;
+}
+
+void Chip8::UpdateSoundTimer()
+{
+    _sound_timer -= 0x01;
+}
+
+void Chip8::UpdateTimers()
+{
+    UpdateDelayTimer();
+    UpdateSoundTimer();
 }
 
 /*
