@@ -7,7 +7,6 @@
 int main(int argc, char* argv[])
 {
     logger::Info("Hello World\n");
-
     Chip8 chip8;
     chip8.GetRegisters()[0] = 0xBB;
     chip8.GetRegisters()[1] = 0xFF;

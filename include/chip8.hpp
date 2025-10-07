@@ -3,6 +3,7 @@
 #include <iostream>
 #include <bitset>
 #include "logger.hpp"
+#include "random.hpp"
 
 enum class PrintMode
 {
@@ -10,6 +11,9 @@ enum class PrintMode
     Hex,
     Bin
 };
+
+constexpr static int W = 64;
+constexpr static int H = 32; 
 
 class Chip8
 {
@@ -27,6 +31,7 @@ class Chip8
         uint16_t _opcode = 0;
         uint16_t _NNN = 0;
         uint16_t __NN = 0;
+        uint16_t ___N = 0;
         uint8_t _X = 0;
         uint8_t _Y = 0;
         bool _draw_flag = false;
@@ -93,6 +98,7 @@ void Chip8::Cycle()
     // Execute opcode
     _NNN = 0x0FFF & _opcode;
     __NN = 0x00FF & _opcode;
+    ___N = 0x000F & _opcode;
     Get_X();
     Get_Y();
     logger::Debug("opcode: {:04X}", _opcode);
@@ -438,18 +444,42 @@ void Chip8::Execute_0xA()
 
 void Chip8::Execute_0xB()
 {
-    //BNNN | Flow | PC = V0 + NNN| Jumps to the address NNN plus V0
     _pc = _V[0x0] + _NNN;
 }
 
 void Chip8::Execute_0xC()
 {
-    
+    uint8_t rand_num = rng::RandomNum_8Bit();
+    _V[_X] =  rand_num & __NN;
+    IncrementProgramCounter();
 }
 
 void Chip8::Execute_0xD()
 {
-    
+    uint16_t pos_x = _V[_X];
+    uint16_t pos_y = _V[_Y];
+    auto idx = [&](int x, int y)
+    {
+        return (y * W) + x;
+    };
+    for (size_t row = 0; row < ___N; row++)
+    {
+        uint8_t sprite = _memory[_I + row];
+        for (size_t col = 0; col < 8; col++)
+        {
+            if (sprite & (0x08 >> col) != 0)
+            {
+                int k = idx((pos_x + col) % W, (pos_y + row) % H);
+                
+                if (_gfx[k] == 0x01)
+                {
+                    _V[0xF] = 0x01;
+                }
+                
+                _gfx[k] ^= 1;
+            }
+        }
+    }
 }
 
 void Chip8::Execute_0xE()
@@ -570,8 +600,8 @@ Notes:
         Y   |   20  | 9XY0      | Cond      | if (Vx != Vy)         | Skips the next instruction if VX does not 
             |       |           |           |                       | equal VY
         Y   |   21  | ANNN      | MEM       | I = NNN               | Sets I to the address NNN
-            |   22  | BNNN      | Flow      | PC = V0 + NNN         | Jumps to the address NNN plus V0
-            |   23  | CXNN      | Rand      | Vx = rand() & NN      | Sets VX to the result of a bitwise AND on
+        Y   |   22  | BNNN      | Flow      | PC = V0 + NNN         | Jumps to the address NNN plus V0
+        Y   |   23  | CXNN      | Rand      | Vx = rand() & NN      | Sets VX to the result of a bitwise AND on
             |       |           |           |                       | a random rumber and NN 
             |   24  | DXYN      | Display   | draw(Vx, Vy, N)       | Draws a sprite at coordinate (VX, VY) that 
             |       |           |           |                       | has a width of 8px and height of Npx. Each
