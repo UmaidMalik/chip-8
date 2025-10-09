@@ -46,12 +46,18 @@ int main(int argc, char* argv[])
     //chip8.Cycle();
     //chip8.Debug_Print();
     
-    //chip8.LoadROM("roms/1-chip8-logo.ch8");
-    //chip8.LoadROM("roms/2-ibm-logo.ch8");
-    //chip8.LoadROM("roms/3-corax+.ch8");
-    //chip8.LoadROM("roms/4-flags.ch8");
-    //chip8.LoadROM("roms/5-quirks.ch8");
-    chip8.LoadROM("roms/Breakout.ch8");
+    bool load_result;
+    //load_result = chip8.LoadROM("roms/1-chip8-logo.ch8");
+    //load_result = chip8.LoadROM("roms/2-ibm-logo.ch8");
+    //load_result = chip8.LoadROM("roms/3-corax+.ch8");
+    //load_result = chip8.LoadROM("roms/4-flags.ch8");
+    load_result = chip8.LoadROM("roms/5-quirks.ch8");
+    //load_result = chip8.LoadROM("roms/CONNECT4");
+    if (!load_result)
+    {
+        logger::Error("LoadROM failed");
+        return 1;
+    }
     // test
     /*
     for(int i = 0; i < 39; i++)
