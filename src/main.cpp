@@ -46,10 +46,12 @@ int main(int argc, char* argv[])
     //chip8.Cycle();
     //chip8.Debug_Print();
     
-
-    chip8.LoadROM("roms/4-flags.ch8");
+    //chip8.LoadROM("roms/1-chip8-logo.ch8");
+    //chip8.LoadROM("roms/2-ibm-logo.ch8");
+    //chip8.LoadROM("roms/3-corax+.ch8");
+    //chip8.LoadROM("roms/4-flags.ch8");
     //chip8.LoadROM("roms/5-quirks.ch8");
-    //chip8.LoadROM("roms/br8kout.ch8");
+    chip8.LoadROM("roms/Breakout.ch8");
     // test
     /*
     for(int i = 0; i < 39; i++)
@@ -142,7 +144,7 @@ int main(int argc, char* argv[])
         SDL_RenderPresent(renderer);
 
         chip8.Cycle();
-        //SDL_Delay(16);
+        SDL_Delay(5);
 
         //chip8.Debug_Print();
         //chip8.Debug_PrintGfx();

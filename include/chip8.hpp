@@ -565,10 +565,13 @@ void Chip8::Execute_0x8()
             break;
         }
         case 0x8006:
+        {
             _V[_X] = _V[_Y];
-            _V[0xF] = 0x01 & _V[_X];
+            uint8_t Vx = _V[_X];
             _V[_X] >>= 1;
+            _V[0xF] = 0x01 & Vx;
             break;
+        } 
         case 0x8007:
         {
             uint8_t Vx = _V[_X];
@@ -578,10 +581,13 @@ void Chip8::Execute_0x8()
             break;
         }
         case 0x800E:
+        {
             _V[_X] = _V[_Y];
-            _V[0xF] = (_V[_X] >> 7) & 0x01;
+            uint8_t Vx = _V[_X];
             _V[_X] <<= 1;
+            _V[0xF] = (Vx >> 7) & 0x01;
             break;
+        }
         default:
             logger::Warn("Unknown opcode {:04X}", _opcode);
             break;
@@ -625,7 +631,7 @@ void Chip8::Execute_0xD()
     {
         return (y * W) + x;
     };
-    //_V[0xF] = 0x0;
+    _V[0xF] = 0x0;
     for (size_t row = 0; row < ___N; row++)
     {
         uint8_t sprite = _memory[_I + row];
