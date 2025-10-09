@@ -590,7 +590,7 @@ void Chip8::Execute_0x8()
         break;
     case 0xE:
         _V[_X] = _V[_Y];
-        _V[0xF] = _V[_X] >> 7;
+        _V[0xF] = (_V[_X] >> 7) & 0x01;
         _V[_X] <<= 1;
         break;
     default:
