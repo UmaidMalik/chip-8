@@ -124,6 +124,7 @@ Chip8::~Chip8()
 
 bool Chip8::LoadROM(const std::string& filename)
 {
+    Reset(); // clear current RAM
     FILE* file = fopen(filename.c_str(), "rb");
     bool result = true;
     if(file == nullptr)
@@ -531,71 +532,60 @@ void Chip8::Execute_0x7()
 
 void Chip8::Execute_0x8()
 {
-   u_int16_t option = 0x000F & _opcode;
-   switch (option)
-   {
-    case 0x0:
-        _V[_X] = _V[_Y];
-        break;
-    case 0x1:
-        _V[_X] |= _V[_Y];
-        VF_FlagClear();
-        break;
-    case 0x2:
-        _V[_X] &= _V[_Y];
-        VF_FlagClear();
-        break;
-    case 0x3:
-        _V[_X] ^= _V[_Y];
-        VF_FlagClear();
-        break;
-    case 0x4:
-        _V[_X] += _V[_Y];
-        if (_V[_Y] > _V[_X])
-        {
-            VF_Flag();
-        }
-        else
-        {
+
+    u_int16_t option = 0xF00F & _opcode;
+    switch (option)
+    {
+        case 0x8000:
+            _V[_X] = _V[_Y];
+            break;
+        case 0x8001:
+            _V[_X] |= _V[_Y];
             VF_FlagClear();
-        }
-    
-        break;
-    case 0x5:
-        _V[_X] = (/*(*/_V[_X] - _V[_Y]);// % 256 + 256) %256;
-        if (_V[_X] > _V[_Y])
-        {
-            VF_Flag();
-        }
-        else
-        {
+            break;
+        case 0x8002:
+            _V[_X] &= _V[_Y];
             VF_FlagClear();
-        } 
-        break;
-    case 0x6:
-        _V[_X] = _V[_Y];
-        _V[0xF] = 0x01 & _V[_X];
-        _V[_X] >>= 1;
-        break;
-    case 0x7:
-        _V[_X] = _V[_Y] - _V[_X];
-        if (_V[_Y] >= _V[_X])
-        {
-            VF_Flag();
-        }
-        else
-        {
+            break;
+        case 0x8003:
+            _V[_X] ^= _V[_Y];
             VF_FlagClear();
+            break;
+        case 0x8004:
+            _V[_X] += _V[_Y];
+            (_V[_Y] > _V[_X]) ? VF_Flag() : VF_FlagClear();
+            break;
+        case 0x8005:
+        {
+            uint8_t Vx = _V[_X];
+            uint8_t Vy = _V[_Y];
+            _V[_X] = Vx - Vy;
+            (Vx >= Vy) ? VF_Flag() : VF_FlagClear();
+            // doing this ordering to pass test cases because some ROMs use VF as VX
+            break;
         }
-        break;
-    case 0xE:
-        _V[_X] = _V[_Y];
-        _V[0xF] = (_V[_X] >> 7) & 0x01;
-        _V[_X] <<= 1;
-        break;
-    default:
-        logger::Warn("Unknown opcode {:04X}", _opcode);
-   }
+        case 0x8006:
+            _V[_X] = _V[_Y];
+            _V[0xF] = 0x01 & _V[_X];
+            _V[_X] >>= 1;
+            break;
+        case 0x8007:
+        {
+            uint8_t Vx = _V[_X];
+            uint8_t Vy = _V[_Y];
+            _V[_X] = Vy - Vx;
+            (Vy >= Vx) ? VF_Flag() : VF_FlagClear();
+            break;
+        }
+        case 0x800E:
+            _V[_X] = _V[_Y];
+            _V[0xF] = (_V[_X] >> 7) & 0x01;
+            _V[_X] <<= 1;
+            break;
+        default:
+            logger::Warn("Unknown opcode {:04X}", _opcode);
+            break;
+    }
    IncrementProgramCounter();
 }
 
@@ -738,24 +728,22 @@ void Chip8::Execute_0xF()
 
 void Chip8::Get_X()
 {
-    _X = _opcode >> 8;
-    _X &= 0x0F;
+    _X = (_opcode & 0x0F00) >> 8;
 }
 
 void Chip8::Get_Y()
 {
-    _Y = _opcode >> 4;
-    _Y &= 0x0F;
+    _Y = (_opcode & 0x00F0) >> 4;
 }
 
 void Chip8::VF_Flag()
 {
-    _V[0xF] = 0x1;
+    _V[0xF] = 1;
 }
 
 void Chip8::VF_FlagClear()
 {
-    _V[0xF] = 0x0;
+    _V[0xF] = 0;
 }
 
 void Chip8::UpdateDelayTimer()

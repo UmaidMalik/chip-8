@@ -13,14 +13,40 @@ int main(int argc, char* argv[])
     logger::Info("Welcome to CHIP-8\n");
     Chip8 chip8;
     auto chip8_gfx = chip8.GetGfx();
-    //chip8_gfx[0] = 1;
-    //chip8_gfx[123] = 1;
     std::unordered_map<SDL_Keycode, uint8_t> key_map;
     key_map[SDLK_1] = 0x1; key_map[SDLK_2] = 0x2; key_map[SDLK_3] = 0x3; key_map[SDLK_4] = 0xC;
     key_map[SDLK_Q] = 0x4; key_map[SDLK_W] = 0x5; key_map[SDLK_E] = 0x6; key_map[SDLK_R] = 0xD;
     key_map[SDLK_A] = 0x7; key_map[SDLK_S] = 0x8; key_map[SDLK_D] = 0x9; key_map[SDLK_F] = 0xE;
     key_map[SDLK_Z] = 0xA; key_map[SDLK_X] = 0x0; key_map[SDLK_C] = 0xB; key_map[SDLK_V] = 0xF;
     
+    //test1
+    /*
+    chip8._V[1] = 0x50;
+    chip8._V[2] = 0x10;
+    chip8._memory[0x200] = 0x81;
+    chip8._memory[0x201] = 0x25;
+    chip8.Cycle();
+    chip8.Debug_Print();
+    */
+    //test2 
+    /*
+    chip8._V[1] = 0x10;
+    chip8._V[2] = 0x20;
+    chip8._memory[0x200] = 0x81;
+    chip8._memory[0x201] = 0x25;
+    chip8.Cycle();
+    chip8.Debug_Print();
+    */
+    //test3 
+    
+    //chip8._V[1] = 0x00;
+    //chip8._V[2] = 0x01;
+    //chip8._memory[0x200] = 0x81;
+    //chip8._memory[0x201] = 0x25;
+    //chip8.Cycle();
+    //chip8.Debug_Print();
+    
+
     chip8.LoadROM("roms/4-flags.ch8");
     //chip8.LoadROM("roms/5-quirks.ch8");
     //chip8.LoadROM("roms/br8kout.ch8");
@@ -33,8 +59,6 @@ int main(int argc, char* argv[])
     */
     //
 
-
-    chip8.Debug_Print(PrintMode::Hex);
     
 
     if (!SDL_Init(SDL_INIT_VIDEO))
@@ -120,7 +144,7 @@ int main(int argc, char* argv[])
         chip8.Cycle();
         //SDL_Delay(16);
 
-        chip8.Debug_Print();
+        //chip8.Debug_Print();
         //chip8.Debug_PrintGfx();
     }
 
