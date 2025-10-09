@@ -13,8 +13,8 @@ enum class PrintMode
     Bin
 };
 
-constexpr static int W = 64;
-constexpr static int H = 32;
+extern constexpr int W = 64;
+extern constexpr int H = 32;
 constexpr static uint16_t rom_start = 0x200;
 
 class Chip8
@@ -29,7 +29,6 @@ class Chip8
         uint16_t _stack[16];
         uint16_t _sp = 0;
         uint8_t _key[16];
-        uint8_t _prev_key[16];
         uint8_t _gfx[W * H];
         uint16_t _opcode = 0;
         uint16_t _NNN = 0;
@@ -37,6 +36,8 @@ class Chip8
         uint16_t ___N = 0;
         uint8_t _X = 0;
         uint8_t _Y = 0;
+        bool _waiting_for_key = false;
+        uint8_t _waiting_register = 0x0;
         bool _draw_flag = false;
         const uint8_t _fontset[80]
         {
@@ -61,6 +62,7 @@ class Chip8
     private:
         int V_Size();
         int KeySize();
+        int StackSize();
         int FontsetSize();
         void IncrementProgramCounter(int n);
         void Execute_0x0();
@@ -83,7 +85,6 @@ class Chip8
         void Get_Y();
         void VF_Flag();
         void VF_FlagClear();
-        void CopyKeysToPrev();
         void UpdateDelayTimer();
         void UpdateSoundTimer();
         void UpdateTimers();
@@ -105,6 +106,9 @@ class Chip8
         void SetDelayTimer(uint8_t t);
         void SetSoundTimer(uint8_t t);
         void SetKey(uint8_t k);
+        void UnsetKey(uint8_t k);
+        void OnKeyPressed(uint8_t k);
+        void OnKeyReleased(uint8_t k);
 };
 
 Chip8::Chip8()
@@ -155,22 +159,21 @@ bool Chip8::LoadROM(const std::string& filename)
 
 void Chip8::Cycle()
 {
-    _opcode = 0x0000;
-    _opcode |= _memory[_pc]; // hi
-    _opcode <<= 8; 
-    _opcode  |= _memory[_pc + 1]; // lo
-
+    _opcode = (_memory[_pc] << 8) | _memory[_pc + 1];
+    
     _NNN = 0x0FFF & _opcode;
     __NN = 0x00FF & _opcode;
     ___N = 0x000F & _opcode;
     Get_X();
     Get_Y();
+    /*
     logger::Debug("opcode: {:04X}", _opcode);
     logger::Debug("instruction: {:X}", _opcode >> 12);
     logger::Debug("NNN: {:03X}", _NNN);
     logger::Debug("NN: {:02X}", __NN);
     logger::Debug("X: {:02X}", _X);
     logger::Debug("Y: {:02X}", _Y);
+    */
     switch (_opcode >> 12)
     {
         case 0x0:
@@ -241,10 +244,11 @@ void Chip8::Reset()
     std::fill(std::begin(_stack), std::end(_stack), 0);
     _sp = 0;
     std::fill(std::begin(_key), std::end(_key), 0);
-    std::fill(std::begin(_prev_key), std::end(_prev_key), 0);
     std::fill(std::begin(_gfx), std::end(_gfx), 0);
     _opcode = 0;
     _draw_flag = false;
+    bool _waiting_for_key = false;
+    uint8_t _waiting_register = 0x0;
     InitFontset();
 }
 
@@ -313,13 +317,13 @@ void Chip8::Debug_Print(PrintMode pm = PrintMode::Hex)
         switch(pm)
         {
             case PrintMode::Dec:
-                logger::Print("Key{:X}: {:05}     Key{:X}: {:05}    Key{:X}: {:05}    Key{:X}: {:05}\n", i, _key[i], i+n, _key[i+n], i+(n*2), _key[i+(n*2)], i+(n*3), _key[i+(n*3)]);
+                logger::Print("Key{:X}: {}     Key{:X}: {}    Key{:X}: {}    Key{:X}: {}\n", i, _key[i], i+n, _key[i+n], i+(n*2), _key[i+(n*2)], i+(n*3), _key[i+(n*3)]);
                 break;
             case PrintMode::Hex:
-                logger::Print("Key{:X}: {:04X}     Key{:X}: {:04X}    Key{:X}: {:04X}    Key{:X}: {:04X}\n", i, _key[i], i+n, _key[i+n], i+(n*2), _key[i+(n*2)], i+(n*3), _key[i+(n*3)]);
+                logger::Print("Key{:X}: {:01X}     Key{:X}: {:01X}    Key{:X}: {:01X}    Key{:X}: {:01X}\n", i, _key[i], i+n, _key[i+n], i+(n*2), _key[i+(n*2)], i+(n*3), _key[i+(n*3)]);
                 break;
             case PrintMode::Bin:
-                logger::Print("Key{:X}: {:016b}     Key{:X}: {:016b}    Key{:X}: {:016b}    Key{:X}: {:016b}\n", i, _key[i], i+n, _key[i+n], i+(n*2), _key[i+(n*2)], i+(n*3), _key[i+(n*3)]);
+                logger::Print("Key{:X}: {:04b}     Key{:X}: {:04b}    Key{:X}: {:04b}    Key{:X}: {:04b}\n", i, _key[i], i+n, _key[i+n], i+(n*2), _key[i+(n*2)], i+(n*3), _key[i+(n*3)]);
                 break;
         }
     }
@@ -370,10 +374,15 @@ int Chip8::KeySize()
     return sizeof(_key) / sizeof(_key[0]);
 }
 
- int Chip8::FontsetSize()
- {
-    return sizeof(_fontset) / sizeof(_fontset[0]);
- }
+int Chip8::StackSize()
+{
+    return sizeof(_stack) / sizeof(_stack[0]);
+}
+
+int Chip8::FontsetSize()
+{
+return sizeof(_fontset) / sizeof(_fontset[0]);
+}
 
 void Chip8::IncrementProgramCounter(int n = 1)
 {
@@ -415,7 +424,29 @@ void Chip8::SetSoundTimer(uint8_t t)
 
 void Chip8::SetKey(uint8_t k)
 {
+    _key[k] = 0x1;
+}
 
+void Chip8::UnsetKey(uint8_t k)
+{
+    _key[k] = 0x0;
+}
+
+void Chip8::OnKeyPressed(uint8_t k)
+{
+    _key[k] = 0x1;
+
+    if (_waiting_for_key)
+    {
+        _V[_waiting_register] = k;
+        _waiting_for_key = false;
+        IncrementProgramCounter();
+    }
+}
+
+void Chip8::OnKeyReleased(uint8_t k)
+{
+    _key[k] = 0x0;
 }
 
 void Chip8::Execute_0x0()
@@ -427,13 +458,14 @@ void Chip8::Execute_0x0()
     }
     else if (_opcode == 0x00EE)
     {
-        _stack[_sp] = 0x0;
+        //_stack[_sp] = 0x0;
         _sp--;
         _pc = _stack[_sp];
+        IncrementProgramCounter();
     }
-    else // otherwise 0x0NNN
+    else
     {
-
+        logger::Debug("This opcode {:04X}, is of 0x0NNN, and is ignored", _opcode);
     }
 }
 
@@ -444,8 +476,12 @@ void Chip8::Execute_0x1()
 
 void Chip8::Execute_0x2()
 {
+    if (_sp >= StackSize())
+    {
+        logger::Error("Stack Overflow: sp={:0X}", _sp);
+    }
     _stack[_sp] = _pc;
-    ++_sp;
+    _sp++;
     _pc = _NNN;
 }
 
@@ -503,12 +539,15 @@ void Chip8::Execute_0x8()
         break;
     case 0x1:
         _V[_X] |= _V[_Y];
+        VF_FlagClear();
         break;
     case 0x2:
         _V[_X] &= _V[_Y];
+        VF_FlagClear();
         break;
     case 0x3:
         _V[_X] ^= _V[_Y];
+        VF_FlagClear();
         break;
     case 0x4:
         _V[_X] += _V[_Y];
@@ -520,34 +559,37 @@ void Chip8::Execute_0x8()
         {
             VF_FlagClear();
         }
+    
         break;
     case 0x5:
-        if (_V[_Y] > _V[_X])
-        {
-            VF_FlagClear();
-        }
-        else
+        _V[_X] = (/*(*/_V[_X] - _V[_Y]);// % 256 + 256) %256;
+        if (_V[_X] > _V[_Y])
         {
             VF_Flag();
         }
-        _V[_X] -= _V[_Y];
+        else
+        {
+            VF_FlagClear();
+        } 
         break;
     case 0x6:
+        _V[_X] = _V[_Y];
         _V[0xF] = 0x01 & _V[_X];
         _V[_X] >>= 1;
         break;
     case 0x7:
-        if (_V[_X] > _V[_Y])
-        {
-            VF_FlagClear();
-        }
-        else
+        _V[_X] = _V[_Y] - _V[_X];
+        if (_V[_Y] >= _V[_X])
         {
             VF_Flag();
         }
-        _V[_X] = _V[_Y] - _V[_X];
+        else
+        {
+            VF_FlagClear();
+        }
         break;
     case 0xE:
+        _V[_X] = _V[_Y];
         _V[0xF] = _V[_X] >> 7;
         _V[_X] <<= 1;
         break;
@@ -569,8 +611,7 @@ void Chip8::Execute_0x9()
 
 void Chip8::Execute_0xA()
 {
-    _I = 0x0000;
-    _I = _NNN;
+    _I = 0x0FFF & _NNN;
     IncrementProgramCounter();
 }
 
@@ -594,18 +635,19 @@ void Chip8::Execute_0xD()
     {
         return (y * W) + x;
     };
+    //_V[0xF] = 0x0;
     for (size_t row = 0; row < ___N; row++)
     {
         uint8_t sprite = _memory[_I + row];
         for (size_t col = 0; col < 8; col++)
         {
-            if (sprite & (0x08 >> col) != 0)
+            if ((sprite & (0x80 >> col)) != 0)
             {
                 int k = idx((pos_x + col) % W, (pos_y + row) % H);
                 
-                if (_gfx[k] == 0x01)
+                if (_gfx[k] == 0x1)
                 {
-                    _V[0xF] = 0x01;
+                    _V[0xF] = 0x1;
                 }
                 
                 _gfx[k] ^= 1;
@@ -618,24 +660,25 @@ void Chip8::Execute_0xD()
 void Chip8::Execute_0xE()
 {
    uint8_t k = _V[_X];
-   k &= 0x0F;
+   k &= 0x0F;    // Only use lowest nibble of VX as key index
    uint8_t n = 1;
    switch (_opcode & 0x00FF)
    {
-    case 0x9E:
-        if (_key[k] == 0x1)
-        {
-            n = 2;
-        }
-        break;
-    case 0xA1:
-        if (_key[k] != 0x1)
-        {
-            n = 2;
-        }
-    default:
-        logger::Warn("Unknown opcode {:04X}", _opcode);
-        break;
+        case 0x9E:
+            if (_key[k] == 0x1)
+            {
+                n = 2;
+            }
+            break;
+        case 0xA1:
+            if (_key[k] != 0x1)
+            {
+                n = 2;
+            }
+            break;
+        default:
+            logger::Warn("Unknown opcode {:04X}", _opcode);
+            break;
    }
    IncrementProgramCounter(n);
 }
@@ -651,21 +694,9 @@ void Chip8::Execute_0xF()
             _V[_X] = GetDelayTimer();
             break;
         case 0x0A:    
-            for (int k = 0; k < KeySize(); k++)
-            {
-                if (_key[k] == 0x1)
-                {
-                    pressed = k;
-                    break;
-                }
-            }
-            if (pressed == -1)
-            {
-                n = 0;
-                return;
-            }
-            _V[_X] = pressed & 0x0F;
-            break;
+            _waiting_for_key = true;
+            _waiting_register = _X;
+            return;
         case 0x15:
             SetDelayTimer(_V[_X]);
             break;
@@ -682,19 +713,21 @@ void Chip8::Execute_0xF()
         case 0x33:
             _memory[_I] = _V[_X] / 100;
             _memory[_I + 1] = (_V[_X] / 10) % 10;
-            _memory[_I + 2] = (_V[_X] / 100) % 10;
+            _memory[_I + 2] = _V[_X] % 10;
             break;
         case 0x55:
             for (int X = 0; X <= _X; X++)
             {
                 _memory[_I + X] = _V[X];
             }
+            _I += _X + 1;
             break;
         case 0x65:
             for (int X = 0; X <= _X; X++)
             {
                 _V[X] = _memory[_I + X];
             }
+            _I += _X + 1;
             break;
         default:
             logger::Warn("Unknown opcode {:04X}", _opcode);
@@ -723,14 +756,6 @@ void Chip8::VF_Flag()
 void Chip8::VF_FlagClear()
 {
     _V[0xF] = 0x0;
-}
-
-void Chip8::CopyKeysToPrev()
-{
-    for(int i = 0; i < KeySize(); i++)
-    {
-        _prev_key[i] = _key[i];
-    }
 }
 
 void Chip8::UpdateDelayTimer()
@@ -893,4 +918,14 @@ Notes:
             |       |           |           |                       | from memory, starting at address I. The 
             |       |           |           |                       | offset from I is increased by 1 for each 
             |       |           |           |                       | value read, but I is not modified
+*/
+
+/*
+    Keyboard Mapping
+
+    Chip8 Keypad Layout -> WASD Keyboard
+            123C                1234
+            456D                QWER
+            789E                ASDF
+            A0BF                ZXCV
 */
