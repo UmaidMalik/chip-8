@@ -12,8 +12,6 @@
 int main(int argc, char* argv[])
 {
     Emulator emulator;
-
-    emulator.Init();
     emulator.Setup();
     emulator.Run();
     return 0;

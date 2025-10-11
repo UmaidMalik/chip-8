@@ -21,13 +21,14 @@ class EventHandler
 EventHandler::EventHandler(Window* window = nullptr)
     : _window(window)
 {
+    logger::Info("EventHandler constructor called");
     InitKeyMap();
 }
 
 EventHandler::~EventHandler()
 {
     _window = nullptr;
-    logger::Info("~EventHandler() destructor called and exited");
+    logger::Info("~EventHandler destructor called");
 }
 
 void EventHandler::ProcessEvents(Chip8& chip8)
