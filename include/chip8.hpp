@@ -3,6 +3,7 @@
 #include <iostream>
 #include <bitset>
 #include <cstdio>
+#include <chrono>
 #include "logger.hpp"
 #include "random.hpp"
 
@@ -15,12 +16,13 @@ enum class PrintMode
 
 extern constexpr int W = 64;
 extern constexpr int H = 32;
+constexpr static uint16_t RAM = 4096;
 constexpr static uint16_t rom_start = 0x200;
 
 class Chip8
 {
     public: // <--- change back to private after
-        uint8_t _memory[4096];
+        uint8_t _memory[RAM];
         uint8_t _V[16];
         uint16_t _I = 0;
         uint16_t _pc = rom_start;
@@ -39,6 +41,9 @@ class Chip8
         bool _waiting_for_key = false;
         uint8_t _waiting_register = 0x0;
         bool _draw_flag = false;
+        size_t _tic = 0;
+        bool _waiting_for_vblank = false;
+        std::chrono::steady_clock::time_point _next_vblank;
         const uint8_t _fontset[80]
         {
             0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -65,6 +70,9 @@ class Chip8
         int StackSize();
         int FontsetSize();
         void IncrementProgramCounter(int n);
+        void Fetch();
+        void Decode();
+        void Execute();
         void Execute_0x0();
         void Execute_0x1();
         void Execute_0x2();
@@ -94,6 +102,7 @@ class Chip8
         ~Chip8();
         bool LoadROM(const std::string& filename);
         void Cycle();
+        void Update();
         bool DrawFlag();
         void Reset();
         void ClearScreen();
@@ -109,6 +118,7 @@ class Chip8
         void UnsetKey(uint8_t k);
         void OnKeyPressed(uint8_t k);
         void OnKeyReleased(uint8_t k);
+        void MaybeTick_vblank();
 };
 
 Chip8::Chip8()
@@ -129,7 +139,8 @@ bool Chip8::LoadROM(const std::string& filename)
     bool result = true;
     if(file == nullptr)
     {
-        logger::Error("Failed to open ROM: fopen resulted in nullptr");
+        logger::Error("Failed to open ROM: {}", filename);
+        logger::Error("fopen resulted in nullptr");
         return false;
     }
     std::fseek(file, 0, SEEK_END);
@@ -160,13 +171,22 @@ bool Chip8::LoadROM(const std::string& filename)
 
 void Chip8::Cycle()
 {
-    _opcode = (_memory[_pc] << 8) | _memory[_pc + 1];
+
+    if (_waiting_for_vblank)
+    {
+        MaybeTick_vblank();
+        return;
+    }
+
     
-    _NNN = 0x0FFF & _opcode;
-    __NN = 0x00FF & _opcode;
-    ___N = 0x000F & _opcode;
-    Get_X();
-    Get_Y();
+    if (_waiting_for_key)
+    {
+        UpdateTimers();
+        return;
+    }
+
+    Fetch();
+    Decode();
     /*
     logger::Debug("opcode: {:04X}", _opcode);
     logger::Debug("instruction: {:X}", _opcode >> 12);
@@ -175,6 +195,31 @@ void Chip8::Cycle()
     logger::Debug("X: {:02X}", _X);
     logger::Debug("Y: {:02X}", _Y);
     */
+    Execute();
+    MaybeTick_vblank();
+}
+
+void Chip8::Update()
+{
+    
+}
+
+void Chip8::Fetch()
+{
+    _opcode = (_memory[_pc] << 8) | _memory[_pc + 1];
+}
+
+void Chip8::Decode()
+{
+    _NNN = 0x0FFF & _opcode;
+    __NN = 0x00FF & _opcode;
+    ___N = 0x000F & _opcode;
+    Get_X();
+    Get_Y();
+}
+
+void Chip8::Execute()
+{
     switch (_opcode >> 12)
     {
         case 0x0:
@@ -226,7 +271,6 @@ void Chip8::Cycle()
             Execute_0xF();
             break;
     }
-    UpdateTimers();
 }
 
 bool Chip8::DrawFlag()
@@ -251,6 +295,7 @@ void Chip8::Reset()
     bool _waiting_for_key = false;
     uint8_t _waiting_register = 0x0;
     InitFontset();
+    _next_vblank = std::chrono::steady_clock::now();
 }
 
 void Chip8::ClearScreen()
@@ -440,14 +485,14 @@ void Chip8::OnKeyPressed(uint8_t k)
     if (_waiting_for_key)
     {
         _V[_waiting_register] = k;
-        _waiting_for_key = false;
-        IncrementProgramCounter();
     }
 }
 
 void Chip8::OnKeyReleased(uint8_t k)
 {
     _key[k] = 0x0;
+    _waiting_for_key = false;
+    IncrementProgramCounter();
 }
 
 void Chip8::Execute_0x0()
@@ -459,9 +504,12 @@ void Chip8::Execute_0x0()
     }
     else if (_opcode == 0x00EE)
     {
-        //_stack[_sp] = 0x0;
-        _sp--;
+        if (_sp >= 0)
+        {
+            _sp--;
+        }
         _pc = _stack[_sp];
+        _stack[_sp] = 0;
         IncrementProgramCounter();
     }
     else
@@ -534,6 +582,8 @@ void Chip8::Execute_0x8()
 {
 
     u_int16_t option = 0xF00F & _opcode;
+    uint8_t Vx = _V[_X];
+    uint8_t Vy = _V[_Y];
     switch (option)
     {
         case 0x8000:
@@ -541,24 +591,22 @@ void Chip8::Execute_0x8()
             break;
         case 0x8001:
             _V[_X] |= _V[_Y];
-            VF_FlagClear();
+            VF_FlagClear(); // chip-8 compatibility
             break;
         case 0x8002:
             _V[_X] &= _V[_Y];
-            VF_FlagClear();
+            VF_FlagClear(); // chip-8 compatibility
             break;
         case 0x8003:
             _V[_X] ^= _V[_Y];
-            VF_FlagClear();
+            VF_FlagClear(); // chip-8 compatibility
             break;
         case 0x8004:
             _V[_X] += _V[_Y];
-            (_V[_Y] > _V[_X]) ? VF_Flag() : VF_FlagClear();
+            (Vx + Vx > 255) ? VF_Flag() : VF_FlagClear();
             break;
         case 0x8005:
         {
-            uint8_t Vx = _V[_X];
-            uint8_t Vy = _V[_Y];
             _V[_X] = Vx - Vy;
             (Vx >= Vy) ? VF_Flag() : VF_FlagClear();
             // doing this ordering to pass test cases because some ROMs use VF as VX
@@ -566,26 +614,24 @@ void Chip8::Execute_0x8()
         }
         case 0x8006:
         {
-            _V[_X] = _V[_Y];
-            uint8_t Vx = _V[_X];
+            _V[_X] = _V[_Y]; // chip-8 compatibility
+            Vx = _V[_X] & 0x01;
             _V[_X] >>= 1;
-            _V[0xF] = 0x01 & Vx;
+            _V[0xF] = Vx;
             break;
         } 
         case 0x8007:
         {
-            uint8_t Vx = _V[_X];
-            uint8_t Vy = _V[_Y];
             _V[_X] = Vy - Vx;
             (Vy >= Vx) ? VF_Flag() : VF_FlagClear();
             break;
         }
         case 0x800E:
         {
-            _V[_X] = _V[_Y];
-            uint8_t Vx = _V[_X];
+            _V[_X] = _V[_Y]; // chip-8 compatibility
+            Vx = (_V[_X] >> 7) & 0x01;
             _V[_X] <<= 1;
-            _V[0xF] = (Vx >> 7) & 0x01;
+            _V[0xF] = Vx;
             break;
         }
         default:
@@ -625,8 +671,8 @@ void Chip8::Execute_0xC()
 
 void Chip8::Execute_0xD()
 {
-    uint16_t pos_x = _V[_X];
-    uint16_t pos_y = _V[_Y];
+    uint16_t base_x = _V[_X] % W;
+    uint16_t base_y = _V[_Y] % H;
     auto idx = [&](int x, int y)
     {
         return (y * W) + x;
@@ -634,22 +680,36 @@ void Chip8::Execute_0xD()
     _V[0xF] = 0x0;
     for (size_t row = 0; row < ___N; row++)
     {
-        uint8_t sprite = _memory[_I + row];
+        uint8_t sprite = _memory[(_I + row) & 0xFFF];
         for (size_t col = 0; col < 8; col++)
         {
-            if ((sprite & (0x80 >> col)) != 0)
+            if ((sprite & (0x80 >> col)) == 0)
             {
-                int k = idx((pos_x + col) % W, (pos_y + row) % H);
-                
-                if (_gfx[k] == 0x1)
-                {
-                    _V[0xF] = 0x1;
-                }
-                
-                _gfx[k] ^= 1;
+                continue;
             }
+
+            int x = static_cast<int>(base_x) + static_cast<int>(col);
+            int y = static_cast<int>(base_y) + static_cast<int>(row);
+            
+            int k; //= idx((x % W, y % H);
+            
+            // clipping
+            if (x < 0 || x >= W || y < 0 || y >= H)
+            {
+                continue;
+            }
+
+            k = idx(x, y);
+
+            if (_gfx[k] == 0x1)
+            {
+                VF_Flag();
+            }
+            _gfx[k] ^= 1;
+            
         }
     }
+    _waiting_for_vblank = true;
     IncrementProgramCounter();
 }
 
@@ -756,7 +816,7 @@ void Chip8::UpdateDelayTimer()
 {
     if (_delay_timer > 0)
     {    
-        _delay_timer--;
+        --_delay_timer;
     }
 }
 
@@ -764,7 +824,7 @@ void Chip8::UpdateSoundTimer()
 {
     if (_sound_timer > 0)
     {
-        _sound_timer--;
+        --_sound_timer;
     }
 }
 
@@ -779,6 +839,25 @@ void Chip8::InitFontset()
     for (int i = 0; i < FontsetSize(); i++)
     {
         _memory[i] = _fontset[i];
+    }
+}
+
+void Chip8::MaybeTick_vblank()
+{
+    using namespace std::chrono;
+    auto now = steady_clock::now();
+    if (now >= _next_vblank)
+    {
+        UpdateTimers();
+
+        _waiting_for_vblank = false;
+
+        _next_vblank += duration_cast<steady_clock::duration>(duration<double>(1.0 / 60.0));
+    
+        while (now > _next_vblank)
+        {
+            _next_vblank += duration_cast<steady_clock::duration>(duration<double>(1.0 / 60.0));
+        }
     }
 }
 
