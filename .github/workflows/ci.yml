@@ -13,9 +13,21 @@ permissions:
   contents: read
 
 jobs:
-  build-linux:
-    name: Build Linux
-    runs-on: ubuntu-latest
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-latest
+            platform: linux-x86_64
+
+          - name: Windows
+            os: windows-latest
+            platform: windows-x86_64
 
     steps:
       - name: Checkout repository
@@ -23,7 +35,16 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install build dependencies
+      - name: Verify README exists
+        shell: bash
+        run: |
+          if [[ ! -f README.md ]]; then
+            echo "README.md is required for build artifacts."
+            exit 1
+          fi
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install --yes \
@@ -47,7 +68,8 @@ jobs:
             libasound2-dev \
             libpulse-dev
 
-      - name: Configure
+      - name: Configure Linux
+        if: runner.os == 'Linux'
         run: |
           cmake \
             -S . \
@@ -55,47 +77,77 @@ jobs:
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build
+      - name: Configure Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake `
+            -S . `
+            -B build `
+            -A x64
+
+      - name: Build Linux
+        if: runner.os == 'Linux'
         run: cmake --build build --parallel
+
+      - name: Build Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cmake --build build --config Release --parallel
 
       - name: Run tests
         run: |
           ctest \
             --test-dir build \
+            --build-config Release \
             --output-on-failure \
             --no-tests=ignore
 
-      - name: Locate executable
-        id: executable
+      - name: Prepare Linux artifact
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           executable="$(find build -type f -name Chip8 -perm -111 | head -n 1)"
 
           if [[ -z "$executable" ]]; then
-            echo "Chip8 executable was not found."
+            echo "Linux Chip8 executable was not found."
             exit 1
           fi
 
-          echo "Found executable: $executable"
-          echo "path=$executable" >> "$GITHUB_OUTPUT"
-
-      - name: Prepare build artifact
-        shell: bash
-        run: |
           mkdir -p artifact
-          cp "${{ steps.executable.outputs.path }}" artifact/Chip8
-
-          if [[ -f README.md ]]; then
-            cp README.md artifact/
-          fi
+          cp "$executable" artifact/Chip8
+          cp README.md artifact/README.md
 
           if [[ -f LICENSE ]]; then
-            cp LICENSE artifact/
+            cp LICENSE artifact/LICENSE
           fi
+
+      - name: Prepare Windows artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $executable = Get-ChildItem `
+            -Path build `
+            -Recurse `
+            -Filter Chip8.exe |
+            Select-Object -First 1
+
+          if (-not $executable) {
+            throw "Windows Chip8.exe executable was not found."
+          }
+
+          New-Item -ItemType Directory -Force -Path artifact | Out-Null
+
+          Copy-Item $executable.FullName artifact/Chip8.exe
+          Copy-Item README.md artifact/README.md
+
+          if (Test-Path LICENSE) {
+            Copy-Item LICENSE artifact/LICENSE
+          }
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: chip8-linux-x86_64
+          name: chip8-${{ matrix.platform }}
           path: artifact/
           if-no-files-found: error
