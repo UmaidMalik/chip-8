@@ -473,7 +473,7 @@ void Chip8::Execute_0x7()
 void Chip8::Execute_0x8()
 {
 
-    u_int16_t option = 0xF00F & _opcode;
+    uint16_t option = 0xF00F & _opcode;
     uint8_t Vx = _V[_X];
     uint8_t Vy = _V[_Y];
     switch (option)
@@ -494,8 +494,11 @@ void Chip8::Execute_0x8()
             VF_FlagClear(); // chip-8 compatibility
             break;
         case 0x8004:
-            _V[_X] += _V[_Y];
-            (Vx + Vx > 255) ? VF_Flag() : VF_FlagClear();
+            //_V[_X] += _V[_Y];
+            //(Vx + Vx > 255) ? VF_Flag() : VF_FlagClear();
+            const uint16_t sum = static_cast<uint16_t>(Vx) + static_cast<uint16_t>(Vy);
+            _V[_X] = static_cast<uint8_t>(sum);
+            (sum > 255) ? VF_Flag() : VF_FlagClear();
             break;
         case 0x8005:
         {
