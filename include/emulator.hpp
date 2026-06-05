@@ -36,4 +36,5 @@ public:
     void Run();
     bool LoadRom(const std::string& filename);
     void UploadGrid(uint32_t fg, uint32_t bg);
+    bool Setup(const std::string& rom_path);
 };

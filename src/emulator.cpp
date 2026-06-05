@@ -75,7 +75,6 @@ void Emulator::Run()
 
 bool Emulator::LoadRom(const std::string& filename)
 {
-    bool load_result;
     //load_result = _chip8.LoadROM("roms/1-chip8-logo.ch8");
     //load_result = _chip8.LoadROM("roms/2-ibm-logo.ch8");
     //load_result = _chip8.LoadROM("roms/3-corax+.ch8");
@@ -87,12 +86,13 @@ bool Emulator::LoadRom(const std::string& filename)
     //load_result = _chip8.LoadROM("roms/Breakout.ch8");
     //load_result = _chip8.LoadROM("roms/PONG2"); //<= used opcode 0000 !
     //load_result = _chip8.LoadROM("roms/15PUZZLE");
-    load_result = _chip8.LoadROM("roms/GUESS");
-    if (!load_result)
+    if (!_chip8.LoadROM(filename))
     {
-        logger::Error("Emulator failed to load ROM");
+        logger::Error("Emulator failed to load ROM: {}", filename);
         return false;
     }
+
+    logger::Info("Loaded ROM: {}", filename);
     return true;
 }
 
@@ -118,4 +118,23 @@ void Emulator::UploadGrid(uint32_t fg, uint32_t bg)
         g += W;
     }
     SDL_UnlockTexture(_window.GetGfxTexture());
+}
+
+bool Emulator::Setup(const std::string& rom_path)
+{
+    logger::Info("Welcome to CHIP-8");
+
+    if (!_window.Setup())
+    {
+        logger::Error("Window Setup() indicates failure has occurred");
+        return false;
+    }
+
+    if (!LoadRom(rom_path))
+    {
+        logger::Error("Emulator failed to load ROM");
+        return false;
+    }
+
+    return true;
 }

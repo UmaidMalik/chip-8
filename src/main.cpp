@@ -1,18 +1,22 @@
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
-#include <iostream>
-#include <unordered_map>
-#include <chrono>
-#include "chip8.hpp"
-#include "logger.hpp"
-#include "window.hpp"
-#include "event_handler.hpp"
 #include "emulator.hpp"
+#include "logger.hpp"
 
 int main(int argc, char* argv[])
 {
+    if (argc != 2)
+    {
+        logger::Error("Usage: Chip8 <rom-file>");
+        return 1;
+    }
+
     Emulator emulator;
-    emulator.Setup();
+
+    if (!emulator.Setup(argv[1]))
+    {
+        logger::Error("Failed to initialize emulator");
+        return 1;
+    }
+
     emulator.Run();
     return 0;
 }
