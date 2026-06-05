@@ -121,7 +121,7 @@ jobs:
             "test_opcode.ch8"
           )
 
-          mkdir -p artifact/rom
+          mkdir -p artifact/roms
           cp "$executable" artifact/Chip8
           cp README.md artifact/README.md
 
@@ -138,12 +138,12 @@ jobs:
           fi
 
           for rom in "${required_roms[@]}"; do
-            if [[ ! -f "rom/$rom" ]]; then
-              echo "Required ROM is missing: rom/$rom"
+            if [[ ! -f "rom/$roms" ]]; then
+              echo "Required ROM is missing: rom/$roms"
               exit 1
             fi
 
-            cp "rom/$rom" artifact/rom/
+            cp "rom/$rom" artifact/roms/
           done
 
       - name: Prepare Windows artifact
@@ -191,13 +191,13 @@ jobs:
           }
 
           foreach ($rom in $requiredRoms) {
-            $romPath = "rom/$rom"
+            $romPath = "rom/$roms"
 
             if (-not (Test-Path $romPath)) {
               throw "Required ROM is missing: $romPath"
             }
 
-            Copy-Item $romPath artifact/rom/
+            Copy-Item $romPath artifact/roms/
           }
 
       - name: Upload build artifact

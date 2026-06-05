@@ -128,7 +128,7 @@ jobs:
           package_name="chip8-${GITHUB_REF_NAME}-${{ matrix.platform }}"
           package_directory="package/$package_name"
 
-          mkdir -p "$package_directory/rom"
+          mkdir -p "$package_directory/roms"
           mkdir -p release-assets
 
           cp "$executable" "$package_directory/Chip8"
@@ -147,12 +147,12 @@ jobs:
           fi
 
           for rom in "${required_roms[@]}"; do
-            if [[ ! -f "rom/$rom" ]]; then
-              echo "Required ROM is missing: rom/$rom"
+            if [[ ! -f "rom/$roms" ]]; then
+              echo "Required ROM is missing: rom/$roms"
               exit 1
             fi
 
-            cp "rom/$rom" "$package_directory/rom/"
+            cp "rom/$roms" "$package_directory/roms/"
           done
 
           tar \
@@ -215,7 +215,7 @@ jobs:
           }
 
           foreach ($rom in $requiredRoms) {
-            $romPath = "rom/$rom"
+            $romPath = "rom/$roms"
 
             if (-not (Test-Path $romPath)) {
               throw "Required ROM is missing: $romPath"
