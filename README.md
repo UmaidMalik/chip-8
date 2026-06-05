@@ -212,10 +212,6 @@ Each successful CI run produces downloadable platform-specific build artifacts c
 
 Version tags matching `v*`, such as `v0.1.0`, create a GitHub Release with Linux and Windows packages.
 
-## Current Status
-
-This project is under active development. Some CHIP-8 compatibility quirks, sound behavior, timing behavior, or ROMs may not yet work perfectly.
-
 ## Third-Party Test ROMs
 
 The test ROMs in `rom/` are redistributed for emulator development and verification.
