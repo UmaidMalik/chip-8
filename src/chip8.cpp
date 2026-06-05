@@ -494,6 +494,7 @@ void Chip8::Execute_0x8()
             VF_FlagClear(); // chip-8 compatibility
             break;
         case 0x8004:
+        {
             //_V[_X] += _V[_Y];
             //(Vx + Vx > 255) ? VF_Flag() : VF_FlagClear();
             const uint16_t sum = static_cast<uint16_t>(Vx) + static_cast<uint16_t>(Vy);
@@ -510,6 +511,7 @@ void Chip8::Execute_0x8()
             }
 
             break;
+        }
         case 0x8005:
         {
             _V[_X] = Vx - Vy;
