@@ -221,7 +221,7 @@ jobs:
               throw "Required ROM is missing: $romPath"
             }
 
-            Copy-Item $romPath "$packageDirectory/rom/"
+            Copy-Item $romPath "$packageDirectory/roms/"
           }
 
           Compress-Archive `
