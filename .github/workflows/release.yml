@@ -113,17 +113,47 @@ jobs:
             exit 1
           fi
 
-          package_name="chip8-${GITHUB_REF_NAME}-${{ matrix.platform }}"
+          required_roms=(
+            "1-chip8-logo.ch8"
+            "2-ibm-logo.ch8"
+            "3-corax+.ch8"
+            "4-flags.ch8"
+            "5-quirks.ch8"
+            "6-keypad.ch8"
+            "7-beep.ch8"
+            "8-scrolling.ch8"
+            "test_opcode.ch8"
+          )
 
-          mkdir -p "package/$package_name"
+          package_name="chip8-${GITHUB_REF_NAME}-${{ matrix.platform }}"
+          package_directory="package/$package_name"
+
+          mkdir -p "$package_directory/rom"
           mkdir -p release-assets
 
-          cp "$executable" "package/$package_name/Chip8"
-          cp README.md "package/$package_name/README.md"
+          cp "$executable" "$package_directory/Chip8"
+          cp README.md "$package_directory/README.md"
 
           if [[ -f LICENSE ]]; then
-            cp LICENSE "package/$package_name/LICENSE"
+            cp LICENSE "$package_directory/LICENSE"
           fi
+
+          if [[ -f THIRD_PARTY_LICENSES.md ]]; then
+            cp THIRD_PARTY_LICENSES.md "$package_directory/"
+          fi
+
+          if [[ -d licenses ]]; then
+            cp -R licenses "$package_directory/licenses"
+          fi
+
+          for rom in "${required_roms[@]}"; do
+            if [[ ! -f "rom/$rom" ]]; then
+              echo "Required ROM is missing: rom/$rom"
+              exit 1
+            fi
+
+            cp "rom/$rom" "$package_directory/rom/"
+          done
 
           tar \
             -czf "release-assets/$package_name.tar.gz" \
@@ -148,19 +178,25 @@ jobs:
             throw "Windows Chip8.exe executable was not found."
           }
 
+          $requiredRoms = @(
+            "1-chip8-logo.ch8",
+            "2-ibm-logo.ch8",
+            "3-corax+.ch8",
+            "4-flags.ch8",
+            "5-quirks.ch8",
+            "6-keypad.ch8",
+            "7-beep.ch8",
+            "8-scrolling.ch8",
+            "test_opcode.ch8"
+          )
+
           $packageName = "chip8-$env:GITHUB_REF_NAME-${{ matrix.platform }}"
           $packageDirectory = "package/$packageName"
 
-          New-Item `
-            -ItemType Directory `
-            -Force `
-            -Path $packageDirectory |
+          New-Item -ItemType Directory -Force -Path "$packageDirectory/rom" |
             Out-Null
 
-          New-Item `
-            -ItemType Directory `
-            -Force `
-            -Path release-assets |
+          New-Item -ItemType Directory -Force -Path release-assets |
             Out-Null
 
           Copy-Item $executable.FullName "$packageDirectory/Chip8.exe"
@@ -168,6 +204,24 @@ jobs:
 
           if (Test-Path LICENSE) {
             Copy-Item LICENSE "$packageDirectory/LICENSE"
+          }
+
+          if (Test-Path THIRD_PARTY_LICENSES.md) {
+            Copy-Item THIRD_PARTY_LICENSES.md "$packageDirectory/"
+          }
+
+          if (Test-Path licenses) {
+            Copy-Item licenses "$packageDirectory/licenses" -Recurse
+          }
+
+          foreach ($rom in $requiredRoms) {
+            $romPath = "rom/$rom"
+
+            if (-not (Test-Path $romPath)) {
+              throw "Required ROM is missing: $romPath"
+            }
+
+            Copy-Item $romPath "$packageDirectory/rom/"
           }
 
           Compress-Archive `
@@ -179,8 +233,7 @@ jobs:
             -Algorithm SHA256
 
           "$($hash.Hash.ToLower())  $packageName.zip" |
-            Set-Content `
-              "release-assets/$packageName.zip.sha256"
+            Set-Content "release-assets/$packageName.zip.sha256"
 
       - name: Upload packaged release
         uses: actions/upload-artifact@v4
