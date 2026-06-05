@@ -497,8 +497,18 @@ void Chip8::Execute_0x8()
             //_V[_X] += _V[_Y];
             //(Vx + Vx > 255) ? VF_Flag() : VF_FlagClear();
             const uint16_t sum = static_cast<uint16_t>(Vx) + static_cast<uint16_t>(Vy);
+
             _V[_X] = static_cast<uint8_t>(sum);
-            (sum > 255) ? VF_Flag() : VF_FlagClear();
+
+            if (sum > 0xFF)
+            {
+                VF_Flag();
+            }
+            else
+            {
+                VF_FlagClear();
+            }
+
             break;
         case 0x8005:
         {
