@@ -20,12 +20,10 @@ jobs:
           - name: Linux
             os: ubuntu-latest
             platform: linux-x86_64
-            extension: tar.gz
 
           - name: Windows
             os: windows-latest
             platform: windows-x86_64
-            extension: zip
 
     steps:
       - name: Checkout repository
@@ -34,11 +32,21 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Verify README exists
+      - name: Verify required documentation
         shell: bash
         run: |
           if [[ ! -f README.md ]]; then
             echo "README.md is required for release packages."
+            exit 1
+          fi
+
+          if [[ ! -f LICENSE ]]; then
+            echo "LICENSE is required for release packages."
+            exit 1
+          fi
+
+          if [[ ! -f THIRD_PARTY_LICENSES.md ]]; then
+            echo "THIRD_PARTY_LICENSES.md is required for release packages."
             exit 1
           fi
 
@@ -95,12 +103,7 @@ jobs:
         run: cmake --build build --config Release --parallel
 
       - name: Run tests
-        run: |
-          ctest \
-            --test-dir build \
-            --build-config Release \
-            --output-on-failure \
-            --no-tests=ignore
+        run: ctest --test-dir build --build-config Release --output-on-failure --no-tests=ignore
 
       - name: Package Linux release
         if: runner.os == 'Linux'
@@ -133,26 +136,22 @@ jobs:
 
           cp "$executable" "$package_directory/Chip8"
           cp README.md "$package_directory/README.md"
-
-          if [[ -f LICENSE ]]; then
-            cp LICENSE "$package_directory/LICENSE"
-          fi
-
-          if [[ -f THIRD_PARTY_LICENSES.md ]]; then
-            cp THIRD_PARTY_LICENSES.md "$package_directory/"
-          fi
+          cp LICENSE "$package_directory/LICENSE"
+          cp THIRD_PARTY_LICENSES.md "$package_directory/"
 
           if [[ -d licenses ]]; then
             cp -R licenses "$package_directory/licenses"
           fi
 
           for rom in "${required_roms[@]}"; do
-            if [[ ! -f "rom/$roms" ]]; then
-              echo "Required ROM is missing: rom/$roms"
+            rom_path="roms/$rom"
+
+            if [[ ! -f "$rom_path" ]]; then
+              echo "Required ROM is missing: $rom_path"
               exit 1
             fi
 
-            cp "rom/$roms" "$package_directory/roms/"
+            cp "$rom_path" "$package_directory/roms/"
           done
 
           tar \
@@ -161,6 +160,7 @@ jobs:
             "$package_name"
 
           cd release-assets
+
           sha256sum "$package_name.tar.gz" \
             > "$package_name.tar.gz.sha256"
 
@@ -193,29 +193,29 @@ jobs:
           $packageName = "chip8-$env:GITHUB_REF_NAME-${{ matrix.platform }}"
           $packageDirectory = "package/$packageName"
 
-          New-Item -ItemType Directory -Force -Path "$packageDirectory/rom" |
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path "$packageDirectory/roms" |
             Out-Null
 
-          New-Item -ItemType Directory -Force -Path release-assets |
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path release-assets |
             Out-Null
 
           Copy-Item $executable.FullName "$packageDirectory/Chip8.exe"
           Copy-Item README.md "$packageDirectory/README.md"
-
-          if (Test-Path LICENSE) {
-            Copy-Item LICENSE "$packageDirectory/LICENSE"
-          }
-
-          if (Test-Path THIRD_PARTY_LICENSES.md) {
-            Copy-Item THIRD_PARTY_LICENSES.md "$packageDirectory/"
-          }
+          Copy-Item LICENSE "$packageDirectory/LICENSE"
+          Copy-Item THIRD_PARTY_LICENSES.md "$packageDirectory/"
 
           if (Test-Path licenses) {
             Copy-Item licenses "$packageDirectory/licenses" -Recurse
           }
 
           foreach ($rom in $requiredRoms) {
-            $romPath = "rom/$roms"
+            $romPath = "roms/$rom"
 
             if (-not (Test-Path $romPath)) {
               throw "Required ROM is missing: $romPath"
