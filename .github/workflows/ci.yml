@@ -31,20 +31,38 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
-      - name: Verify README exists
+      - name: Verify required files
         shell: bash
         run: |
-          if [[ ! -f README.md ]]; then
-            echo "README.md is required for build artifacts."
-            exit 1
-          fi
+          required_files=(
+            "README.md"
+            "LICENSE"
+            "THIRD_PARTY_LICENSES.md"
+            "roms/1-chip8-logo.ch8"
+            "roms/2-ibm-logo.ch8"
+            "roms/3-corax+.ch8"
+            "roms/4-flags.ch8"
+            "roms/5-quirks.ch8"
+            "roms/6-keypad.ch8"
+            "roms/7-beep.ch8"
+            "roms/8-scrolling.ch8"
+            "roms/test_opcode.ch8"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              echo "Required file is missing: $file"
+              exit 1
+            fi
+          done
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
+        shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install --yes \
@@ -70,6 +88,7 @@ jobs:
 
       - name: Configure Linux
         if: runner.os == 'Linux'
+        shell: bash
         run: |
           cmake \
             -S . \
@@ -88,6 +107,7 @@ jobs:
 
       - name: Build Linux
         if: runner.os == 'Linux'
+        shell: bash
         run: cmake --build build --parallel
 
       - name: Build Windows
@@ -102,105 +122,128 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          executable="$(find build -type f -name Chip8 -perm -111 | head -n 1)"
+          artifact_dir="$GITHUB_WORKSPACE/artifact"
+          rom_dir="$artifact_dir/roms"
+
+          executable="$(find "$GITHUB_WORKSPACE/build" \
+            -type f \
+            -name Chip8 \
+            -perm -111 \
+            | head -n 1)"
 
           if [[ -z "$executable" ]]; then
             echo "Linux Chip8 executable was not found."
             exit 1
           fi
 
-          required_roms=(
-            "1-chip8-logo.ch8"
-            "2-ibm-logo.ch8"
-            "3-corax+.ch8"
-            "4-flags.ch8"
-            "5-quirks.ch8"
-            "6-keypad.ch8"
-            "7-beep.ch8"
-            "8-scrolling.ch8"
-            "test_opcode.ch8"
-          )
+          mkdir -p "$rom_dir"
 
-          mkdir -p artifact/roms
-          cp "$executable" artifact/Chip8
-          cp README.md artifact/README.md
-
-          if [[ -f LICENSE ]]; then
-            cp LICENSE artifact/LICENSE
-          fi
-
-          if [[ -f THIRD_PARTY_LICENSES.md ]]; then
-            cp THIRD_PARTY_LICENSES.md artifact/
-          fi
+          cp "$executable" "$artifact_dir/Chip8"
+          cp README.md "$artifact_dir/README.md"
+          cp LICENSE "$artifact_dir/LICENSE"
+          cp THIRD_PARTY_LICENSES.md "$artifact_dir/THIRD_PARTY_LICENSES.md"
 
           if [[ -d licenses ]]; then
-            cp -R licenses artifact/licenses
+            cp -R licenses "$artifact_dir/licenses"
           fi
 
-          for rom in "${required_roms[@]}"; do
-            rom_path="roms/$rom"
+          cp roms/1-chip8-logo.ch8 "$rom_dir/"
+          cp roms/2-ibm-logo.ch8 "$rom_dir/"
+          cp roms/3-corax+.ch8 "$rom_dir/"
+          cp roms/4-flags.ch8 "$rom_dir/"
+          cp roms/5-quirks.ch8 "$rom_dir/"
+          cp roms/6-keypad.ch8 "$rom_dir/"
+          cp roms/7-beep.ch8 "$rom_dir/"
+          cp roms/8-scrolling.ch8 "$rom_dir/"
+          cp roms/test_opcode.ch8 "$rom_dir/"
 
-            if [[ ! -f "$rom_path" ]]; then
-              echo "Required ROM is missing: $rom_path"
-              exit 1
-            fi
+          echo "Linux artifact contents:"
+          find "$artifact_dir" -maxdepth 3 -type f -print
 
-            cp "$rom_path" artifact/roms/
-          done
-
-      - name: Prepare Linux artifact
-        if: runner.os == 'Linux'
-        shell: bash
+      - name: Prepare Windows artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          executable="$(find build -type f -name Chip8 -perm -111 | head -n 1)"
+          $artifactDirectory = Join-Path $env:GITHUB_WORKSPACE "artifact"
+          $romDirectory = Join-Path $artifactDirectory "roms"
+          $buildDirectory = Join-Path $env:GITHUB_WORKSPACE "build"
 
-          if [[ -z "$executable" ]]; then
-            echo "Linux Chip8 executable was not found."
-            exit 1
-          fi
+          $executable = Get-ChildItem `
+            -Path $buildDirectory `
+            -Recurse `
+            -File `
+            -Filter "Chip8.exe" |
+            Where-Object {
+              $_.FullName -match "[\\/]Release[\\/]"
+            } |
+            Select-Object -First 1
 
-          required_roms=(
-            "1-chip8-logo.ch8"
-            "2-ibm-logo.ch8"
-            "3-corax+.ch8"
-            "4-flags.ch8"
-            "5-quirks.ch8"
-            "6-keypad.ch8"
-            "7-beep.ch8"
-            "8-scrolling.ch8"
+          if (-not $executable) {
+            throw "Windows Release executable Chip8.exe was not found."
+          }
+
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path $romDirectory |
+            Out-Null
+
+          Copy-Item `
+            $executable.FullName `
+            (Join-Path $artifactDirectory "Chip8.exe")
+
+          Copy-Item `
+            (Join-Path $env:GITHUB_WORKSPACE "README.md") `
+            (Join-Path $artifactDirectory "README.md")
+
+          Copy-Item `
+            (Join-Path $env:GITHUB_WORKSPACE "LICENSE") `
+            (Join-Path $artifactDirectory "LICENSE")
+
+          Copy-Item `
+            (Join-Path $env:GITHUB_WORKSPACE "THIRD_PARTY_LICENSES.md") `
+            (Join-Path $artifactDirectory "THIRD_PARTY_LICENSES.md")
+
+          $licensesDirectory = Join-Path $env:GITHUB_WORKSPACE "licenses"
+
+          if (Test-Path $licensesDirectory) {
+            Copy-Item `
+              $licensesDirectory `
+              (Join-Path $artifactDirectory "licenses") `
+              -Recurse
+          }
+
+          $requiredRoms = @(
+            "1-chip8-logo.ch8",
+            "2-ibm-logo.ch8",
+            "3-corax+.ch8",
+            "4-flags.ch8",
+            "5-quirks.ch8",
+            "6-keypad.ch8",
+            "7-beep.ch8",
+            "8-scrolling.ch8",
             "test_opcode.ch8"
           )
 
-          mkdir -p artifact/roms
-          cp "$executable" artifact/Chip8
-          cp README.md artifact/README.md
+          foreach ($rom in $requiredRoms) {
+            $source = Join-Path `
+              (Join-Path $env:GITHUB_WORKSPACE "roms") `
+              $rom
 
-          if [[ -f LICENSE ]]; then
-            cp LICENSE artifact/LICENSE
-          fi
+            if (-not (Test-Path $source)) {
+              throw "Required ROM is missing: $source"
+            }
 
-          if [[ -f THIRD_PARTY_LICENSES.md ]]; then
-            cp THIRD_PARTY_LICENSES.md artifact/
-          fi
+            Copy-Item $source $romDirectory
+          }
 
-          if [[ -d licenses ]]; then
-            cp -R licenses artifact/licenses
-          fi
-
-          for rom in "${required_roms[@]}"; do
-            rom_path="roms/$rom"
-
-            if [[ ! -f "$rom_path" ]]; then
-              echo "Required ROM is missing: $rom_path"
-              exit 1
-            fi
-
-            cp "$rom_path" artifact/roms/
-          done
+          Write-Host "Windows artifact contents:"
+          Get-ChildItem $artifactDirectory -Recurse
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chip8-${{ matrix.platform }}
-          path: artifact/
+          path: ${{ github.workspace }}/artifact/
           if-no-files-found: error
+          retention-days: 14

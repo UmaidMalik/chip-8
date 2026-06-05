@@ -27,31 +27,39 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Verify required documentation
+      - name: Verify required files
         shell: bash
         run: |
-          if [[ ! -f README.md ]]; then
-            echo "README.md is required for release packages."
-            exit 1
-          fi
+          required_files=(
+            "README.md"
+            "LICENSE"
+            "THIRD_PARTY_LICENSES.md"
+            "roms/1-chip8-logo.ch8"
+            "roms/2-ibm-logo.ch8"
+            "roms/3-corax+.ch8"
+            "roms/4-flags.ch8"
+            "roms/5-quirks.ch8"
+            "roms/6-keypad.ch8"
+            "roms/7-beep.ch8"
+            "roms/8-scrolling.ch8"
+            "roms/test_opcode.ch8"
+          )
 
-          if [[ ! -f LICENSE ]]; then
-            echo "LICENSE is required for release packages."
-            exit 1
-          fi
-
-          if [[ ! -f THIRD_PARTY_LICENSES.md ]]; then
-            echo "THIRD_PARTY_LICENSES.md is required for release packages."
-            exit 1
-          fi
+          for file in "${required_files[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              echo "Required file is missing: $file"
+              exit 1
+            fi
+          done
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
+        shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install --yes \
@@ -77,6 +85,7 @@ jobs:
 
       - name: Configure Linux
         if: runner.os == 'Linux'
+        shell: bash
         run: |
           cmake \
             -S . \
@@ -95,6 +104,7 @@ jobs:
 
       - name: Build Linux
         if: runner.os == 'Linux'
+        shell: bash
         run: cmake --build build --parallel
 
       - name: Build Windows
@@ -109,73 +119,116 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          executable="$(find build -type f -name Chip8 -perm -111 | head -n 1)"
+          package_name="chip8-${GITHUB_REF_NAME}-${{ matrix.platform }}"
+          package_directory="$GITHUB_WORKSPACE/package/$package_name"
+          release_directory="$GITHUB_WORKSPACE/release-assets"
+
+          executable="$(find "$GITHUB_WORKSPACE/build" \
+            -type f \
+            -name Chip8 \
+            -perm -111 \
+            | head -n 1)"
 
           if [[ -z "$executable" ]]; then
             echo "Linux Chip8 executable was not found."
             exit 1
           fi
 
-          required_roms=(
-            "1-chip8-logo.ch8"
-            "2-ibm-logo.ch8"
-            "3-corax+.ch8"
-            "4-flags.ch8"
-            "5-quirks.ch8"
-            "6-keypad.ch8"
-            "7-beep.ch8"
-            "8-scrolling.ch8"
-            "test_opcode.ch8"
-          )
-
-          package_name="chip8-${GITHUB_REF_NAME}-${{ matrix.platform }}"
-          package_directory="package/$package_name"
-
           mkdir -p "$package_directory/roms"
-          mkdir -p release-assets
+          mkdir -p "$release_directory"
 
           cp "$executable" "$package_directory/Chip8"
           cp README.md "$package_directory/README.md"
           cp LICENSE "$package_directory/LICENSE"
-          cp THIRD_PARTY_LICENSES.md "$package_directory/"
+          cp THIRD_PARTY_LICENSES.md "$package_directory/THIRD_PARTY_LICENSES.md"
 
           if [[ -d licenses ]]; then
             cp -R licenses "$package_directory/licenses"
           fi
 
-          for rom in "${required_roms[@]}"; do
-            rom_path="roms/$rom"
-
-            if [[ ! -f "$rom_path" ]]; then
-              echo "Required ROM is missing: $rom_path"
-              exit 1
-            fi
-
-            cp "$rom_path" "$package_directory/roms/"
-          done
+          cp roms/1-chip8-logo.ch8 "$package_directory/roms/"
+          cp roms/2-ibm-logo.ch8 "$package_directory/roms/"
+          cp roms/3-corax+.ch8 "$package_directory/roms/"
+          cp roms/4-flags.ch8 "$package_directory/roms/"
+          cp roms/5-quirks.ch8 "$package_directory/roms/"
+          cp roms/6-keypad.ch8 "$package_directory/roms/"
+          cp roms/7-beep.ch8 "$package_directory/roms/"
+          cp roms/8-scrolling.ch8 "$package_directory/roms/"
+          cp roms/test_opcode.ch8 "$package_directory/roms/"
 
           tar \
-            -czf "release-assets/$package_name.tar.gz" \
-            -C package \
+            -czf "$release_directory/$package_name.tar.gz" \
+            -C "$GITHUB_WORKSPACE/package" \
             "$package_name"
 
-          cd release-assets
+          cd "$release_directory"
 
           sha256sum "$package_name.tar.gz" \
             > "$package_name.tar.gz.sha256"
+
+          echo "Linux release assets:"
+          find "$release_directory" -maxdepth 2 -type f -print
 
       - name: Package Windows release
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          $packageName = "chip8-$env:GITHUB_REF_NAME-${{ matrix.platform }}"
+          $packageRoot = Join-Path $env:GITHUB_WORKSPACE "package"
+          $packageDirectory = Join-Path $packageRoot $packageName
+          $romDirectory = Join-Path $packageDirectory "roms"
+          $releaseDirectory = Join-Path $env:GITHUB_WORKSPACE "release-assets"
+          $buildDirectory = Join-Path $env:GITHUB_WORKSPACE "build"
+
           $executable = Get-ChildItem `
-            -Path build `
+            -Path $buildDirectory `
             -Recurse `
-            -Filter Chip8.exe |
+            -File `
+            -Filter "Chip8.exe" |
+            Where-Object {
+              $_.FullName -match "[\\/]Release[\\/]"
+            } |
             Select-Object -First 1
 
           if (-not $executable) {
-            throw "Windows Chip8.exe executable was not found."
+            throw "Windows Release executable Chip8.exe was not found."
+          }
+
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path $romDirectory |
+            Out-Null
+
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path $releaseDirectory |
+            Out-Null
+
+          Copy-Item `
+            $executable.FullName `
+            (Join-Path $packageDirectory "Chip8.exe")
+
+          Copy-Item `
+            (Join-Path $env:GITHUB_WORKSPACE "README.md") `
+            (Join-Path $packageDirectory "README.md")
+
+          Copy-Item `
+            (Join-Path $env:GITHUB_WORKSPACE "LICENSE") `
+            (Join-Path $packageDirectory "LICENSE")
+
+          Copy-Item `
+            (Join-Path $env:GITHUB_WORKSPACE "THIRD_PARTY_LICENSES.md") `
+            (Join-Path $packageDirectory "THIRD_PARTY_LICENSES.md")
+
+          $licensesDirectory = Join-Path $env:GITHUB_WORKSPACE "licenses"
+
+          if (Test-Path $licensesDirectory) {
+            Copy-Item `
+              $licensesDirectory `
+              (Join-Path $packageDirectory "licenses") `
+              -Recurse
           }
 
           $requiredRoms = @(
@@ -190,57 +243,46 @@ jobs:
             "test_opcode.ch8"
           )
 
-          $packageName = "chip8-$env:GITHUB_REF_NAME-${{ matrix.platform }}"
-          $packageDirectory = "package/$packageName"
-
-          New-Item `
-            -ItemType Directory `
-            -Force `
-            -Path "$packageDirectory/roms" |
-            Out-Null
-
-          New-Item `
-            -ItemType Directory `
-            -Force `
-            -Path release-assets |
-            Out-Null
-
-          Copy-Item $executable.FullName "$packageDirectory/Chip8.exe"
-          Copy-Item README.md "$packageDirectory/README.md"
-          Copy-Item LICENSE "$packageDirectory/LICENSE"
-          Copy-Item THIRD_PARTY_LICENSES.md "$packageDirectory/"
-
-          if (Test-Path licenses) {
-            Copy-Item licenses "$packageDirectory/licenses" -Recurse
-          }
-
           foreach ($rom in $requiredRoms) {
-            $romPath = "roms/$rom"
+            $source = Join-Path `
+              (Join-Path $env:GITHUB_WORKSPACE "roms") `
+              $rom
 
-            if (-not (Test-Path $romPath)) {
-              throw "Required ROM is missing: $romPath"
+            if (-not (Test-Path $source)) {
+              throw "Required ROM is missing: $source"
             }
 
-            Copy-Item $romPath "$packageDirectory/roms/"
+            Copy-Item $source $romDirectory
           }
+
+          $zipPath = Join-Path $releaseDirectory "$packageName.zip"
 
           Compress-Archive `
             -Path $packageDirectory `
-            -DestinationPath "release-assets/$packageName.zip"
+            -DestinationPath $zipPath `
+            -Force
 
           $hash = Get-FileHash `
-            "release-assets/$packageName.zip" `
+            -Path $zipPath `
             -Algorithm SHA256
 
+          $checksumPath = Join-Path `
+            $releaseDirectory `
+            "$packageName.zip.sha256"
+
           "$($hash.Hash.ToLower())  $packageName.zip" |
-            Set-Content "release-assets/$packageName.zip.sha256"
+            Set-Content $checksumPath
+
+          Write-Host "Windows release assets:"
+          Get-ChildItem $releaseDirectory -Recurse
 
       - name: Upload packaged release
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.platform }}
-          path: release-assets/
+          path: ${{ github.workspace }}/release-assets/
           if-no-files-found: error
+          retention-days: 7
 
   publish-release:
     name: Publish GitHub release
@@ -249,14 +291,15 @@ jobs:
 
     steps:
       - name: Download packaged releases
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: release-*
           path: release-assets
           merge-multiple: true
 
-      - name: Display release files
-        run: find release-assets -maxdepth 2 -type f -print
+      - name: Display downloaded release files
+        shell: bash
+        run: find release-assets -maxdepth 3 -type f -print
 
       - name: Create GitHub release
         shell: bash
@@ -264,12 +307,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mapfile -t release_files < <(
-            find release-assets -type f \
+            find release-assets \
+              -type f \
               \( \
                 -name "*.tar.gz" \
                 -o -name "*.zip" \
                 -o -name "*.sha256" \
-              \)
+              \) \
+              -print
           )
 
           if [[ ${#release_files[@]} -eq 0 ]]; then
