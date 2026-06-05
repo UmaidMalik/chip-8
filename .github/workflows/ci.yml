@@ -96,12 +96,7 @@ jobs:
         run: cmake --build build --config Release --parallel
 
       - name: Run tests
-        run: |
-          ctest \
-            --test-dir build \
-            --build-config Release \
-            --output-on-failure \
-            --no-tests=ignore
+        run: ctest --test-dir build --build-config Release --output-on-failure --no-tests=ignore
 
       - name: Prepare Linux artifact
         if: runner.os == 'Linux'
