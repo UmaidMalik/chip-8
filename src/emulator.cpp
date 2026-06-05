@@ -7,7 +7,7 @@
 #include "window.hpp"
 #include "event_handler.hpp"
 
-Emulator::Emulator()
+Emulator::Emulator() : _event_handler(&_window)
 {
     logger::Info("Chip8 constructor called");
 }
@@ -26,8 +26,6 @@ bool Emulator::Setup()
         logger::Error("Window Setup() indicates failure has occurred");
         return false;
     }
-
-    _event_handler.SetWindow(&_window);
 
     if (!LoadRom(""))
     {

@@ -1,15 +1,16 @@
 #pragma once
 
+#include <cstdint>
 #include <random>
 
 namespace rng
 {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<> distr(0, 255);
-
-    uint8_t RandomNum_8Bit()
+    inline uint8_t RandomNum_8Bit()
     {
-        return distr(gen);
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        static std::uniform_int_distribution<int> distr(0, 255);
+
+        return static_cast<uint8_t>(distr(gen));
     }
 }

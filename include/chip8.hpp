@@ -14,10 +14,18 @@ enum class PrintMode
     Bin
 };
 
+/*
 extern constexpr int W = 64;
 extern constexpr int H = 32;
 constexpr static uint16_t RAM = 4096;
 constexpr static uint16_t rom_start = 0x200;
+*/
+
+inline constexpr int W = 64;
+inline constexpr int H = 32;
+
+inline constexpr uint16_t RAM = 4096;
+inline constexpr uint16_t rom_start = 0x200;
 
 class Chip8
 {

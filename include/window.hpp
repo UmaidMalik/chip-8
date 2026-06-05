@@ -6,7 +6,7 @@
 #include "chip8.hpp"
 #include "logger.hpp"
 
-extern constexpr int WINDOW_SCALE = 20;
+inline constexpr int WINDOW_SCALE = 20;
 
 class Window
 {
