@@ -49,3 +49,33 @@ set_target_properties(Chip8 PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 # Pretty groups in IDEs
 source_group(TREE "${PROJECT_SOURCE_DIR}/src"     FILES ${C8_SOURCES} ${C8_PRIV_HDR})
 source_group(TREE "${PROJECT_SOURCE_DIR}/include" FILES ${C8_PUB_HDR})
+
+if(EMSCRIPTEN)
+    set_target_properties(
+        Chip8
+        PROPERTIES
+        OUTPUT_NAME "index"
+        SUFFIX ".html"
+    )
+
+    target_link_options(
+        Chip8
+        PRIVATE
+        "--shell-file=${CMAKE_SOURCE_DIR}/web/shell.html"
+        "--preload-file=${CMAKE_SOURCE_DIR}/roms@/roms"
+        "-sALLOW_MEMORY_GROWTH=1"
+        "-sEXPORTED_RUNTIME_METHODS=['ccall','FS']"
+    )
+
+    add_custom_command(
+        TARGET Chip8
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_SOURCE_DIR}/web/style.css"
+            "$<TARGET_FILE_DIR:Chip8>/style.css"
+
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_SOURCE_DIR}/web/app.js"
+            "$<TARGET_FILE_DIR:Chip8>/app.js"
+    )
+endif()

@@ -14,3 +14,10 @@ cmake --build build --config Debug
 Linux
 cmake -S . -B build-linux -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build build-linux
+
+
+WASM
+emcmake cmake -S . -B build-web -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build-web --parallel
+
+find build-web -type f  -name "index.html" -o -name "index.js" -o -name "index.wasm" -o -name "index.data"

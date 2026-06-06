@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>CHIP-8 Emulator</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <main class="app">
+        <header>
+            <h1>CHIP-8 Emulator</h1>
+            <p>C++ and SDL3, compiled to WebAssembly</p>
+        </header>
+
+        <section class="controls">
+            <label for="bundled-rom">Bundled ROM</label>
+
+            <select id="bundled-rom">
+                <option value="/roms/1-chip8-logo.ch8">
+                    CHIP-8 Logo
+                </option>
+
+                <option value="/roms/2-ibm-logo.ch8">
+                    IBM Logo
+                </option>
+
+                <option value="/roms/3-corax+.ch8">
+                    Corax+ Test
+                </option>
+
+                <option value="/roms/4-flags.ch8">
+                    Flags Test
+                </option>
+
+                <option value="/roms/5-quirks.ch8">
+                    Quirks Test
+                </option>
+
+                <option value="/roms/6-keypad.ch8">
+                    Keypad Test
+                </option>
+
+                <option value="/roms/7-beep.ch8">
+                    Beep Test
+                </option>
+
+                <option value="/roms/8-scrolling.ch8">
+                    Scrolling Test
+                </option>
+
+                <option value="/roms/test_opcode.ch8">
+                    Opcode Test
+                </option>
+            </select>
+
+            <button id="load-bundled-rom" type="button">
+                Load ROM
+            </button>
+
+            <label for="rom-upload">Upload local ROM</label>
+
+            <input
+                id="rom-upload"
+                type="file"
+            >
+        </section>
+
+        <section class="emulator">
+            <canvas
+                id="canvas"
+                width="1280"
+                height="640"
+                tabindex="0"
+                oncontextmenu="event.preventDefault()"
+            ></canvas>
+
+            <p id="status">Starting emulator…</p>
+        </section>
+
+        <section class="instructions">
+            <h2>Keyboard</h2>
+
+            <pre>
+CHIP-8         Keyboard
+1 2 3 C        1 2 3 4
+4 5 6 D        Q W E R
+7 8 9 E        A S D F
+A 0 B F        Z X C V
+            </pre>
+        </section>
+    </main>
+
+    <script>
+        var Module = {
+            canvas: document.getElementById("canvas"),
+
+            print(text) {
+                console.log(text);
+            },
+
+            printErr(text) {
+                console.error(text);
+            },
+
+            onRuntimeInitialized() {
+                document.getElementById("status").textContent =
+                    "Emulator ready";
+
+                window.dispatchEvent(
+                    new CustomEvent("chip8-runtime-ready")
+                );
+            }
+        };
+    </script>
+
+    {{{ SCRIPT }}}
+
+    <script src="app.js"></script>
+</body>
+</html>

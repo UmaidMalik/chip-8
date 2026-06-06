@@ -1,3 +1,6 @@
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #include "emulator.hpp"
 #include <iostream>
 #include <unordered_map>
@@ -17,80 +20,84 @@ Emulator::~Emulator()
     logger::Info("Chip8 destructor called");
 }
 
-bool Emulator::Setup()
+#ifdef __EMSCRIPTEN__ 
+
+namespace
 {
-    logger::Info("Welcome to CHIP-8\n");
-
-    if (!_window.Setup())
+    void BrowserMainLoop(void* argument)
     {
-        logger::Error("Window Setup() indicates failure has occurred");
-        return false;
+        auto* emulator = static_cast<Emulator*>(argument);
+        emulator->Tick();
     }
-
-    if (!LoadRom(""))
-    {
-        logger::Error("Emulator failed to load ROM");
-        return false;
-    }
-
-    return true;
 }
+
+void Emulator::Run()
+{
+    emscripten_set_main_loop_arg(BrowserMainLoop, this, 0, true);
+}
+
+#else
 
 void Emulator::Run()
 {
     while (_window.Running())
     {
-        _event_handler.ProcessEvents(_chip8);
-
-        auto curr = std::chrono::steady_clock::now();
-        double delta_time = std::chrono::duration<double>(curr - prev).count();
-        prev = curr;
-
-        cpu_accum += delta_time;
-        frame_accum += delta_time;
-
-        while (cpu_accum >= SEC_PER_CPU)
-        {
-            _chip8.Cycle();
-            cpu_accum -= SEC_PER_CPU;
-        }
-
-        while (frame_accum >= SEC_PER_FRAME)
-        {
-            _chip8.MaybeTick_vblank();
-            frame_accum -= SEC_PER_FRAME;
-        }
-
-        UploadGrid(0xF0FF00FF, 0x000000FF);
-        SDL_RenderClear(_window.GetRenderer());
-        SDL_RenderTexture(_window.GetRenderer(), _window.GetGfxTexture(), nullptr, nullptr);
-        SDL_RenderPresent(_window.GetRenderer());
-
-
-
+        Tick();
         //chip8.Debug_Print();
         //chip8.Debug_PrintGfx();
     }
 }
 
+#endif
+
+void Emulator::Tick()
+{
+    _event_handler.ProcessEvents(_chip8);
+
+    const auto current = std::chrono::steady_clock::now();
+    const double deltaTime =
+        std::chrono::duration<double>(current - prev).count();
+
+    prev = current;
+
+    cpu_accum += deltaTime;
+    frame_accum += deltaTime;
+
+    while (cpu_accum >= SEC_PER_CPU)
+    {
+        _chip8.Cycle();
+        cpu_accum -= SEC_PER_CPU;
+    }
+
+    if (frame_accum >= SEC_PER_FRAME)
+    {
+        _chip8.MaybeTick_vblank();
+        frame_accum -= SEC_PER_FRAME;
+
+        UploadGrid(fg_color, bg_color);
+
+        SDL_RenderClear(_window.GetRenderer());
+        SDL_RenderTexture(
+            _window.GetRenderer(),
+            _window.GetGfxTexture(),
+            nullptr,
+            nullptr
+        );
+        SDL_RenderPresent(_window.GetRenderer());
+    }
+}
+
 bool Emulator::LoadRom(const std::string& filename)
 {
-    //load_result = _chip8.LoadROM("roms/1-chip8-logo.ch8");
-    //load_result = _chip8.LoadROM("roms/2-ibm-logo.ch8");
-    //load_result = _chip8.LoadROM("roms/3-corax+.ch8");
-    //load_result = _chip8.LoadROM("roms/4-flags.ch8");
-    //load_result = _chip8.LoadROM("roms/5-quirks.ch8");
-    //load_result = _chip8.LoadROM("roms/6-keypad.ch8");
-    //load_result = _chip8.LoadROM("roms/7-beep.ch8");
-    //load_result = _chip8.LoadROM("roms/CONNECT4"); 
-    //load_result = _chip8.LoadROM("roms/Breakout.ch8");
-    //load_result = _chip8.LoadROM("roms/PONG2"); //<= used opcode 0000 !
-    //load_result = _chip8.LoadROM("roms/15PUZZLE");
     if (!_chip8.LoadROM(filename))
     {
         logger::Error("Emulator failed to load ROM: {}", filename);
         return false;
     }
+
+    cpu_accum = 0.0;
+    frame_accum = 0.0;
+    prev = std::chrono::steady_clock::now();
 
     logger::Info("Loaded ROM: {}", filename);
     return true;
@@ -138,3 +145,4 @@ bool Emulator::Setup(const std::string& rom_path)
 
     return true;
 }
+

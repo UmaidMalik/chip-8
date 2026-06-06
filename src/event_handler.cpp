@@ -2,7 +2,7 @@
 #include <unordered_map>
 #include "window.hpp"
 
-EventHandler::EventHandler(Window* window = nullptr)
+EventHandler::EventHandler(Window* window)
     : _window(window)
 {
     logger::Info("EventHandler constructor called");
