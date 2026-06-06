@@ -247,3 +247,95 @@ jobs:
           path: ${{ github.workspace }}/artifact/
           if-no-files-found: error
           retention-days: 14
+
+  build-web:
+    name: Build WebAssembly
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            cmake \
+            ninja-build \
+            python3
+
+      - name: Set up Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+
+      - name: Show Emscripten version
+        run: emcc --version
+
+      - name: Configure WebAssembly build
+        shell: bash
+        run: |
+          emcmake cmake \
+            -S . \
+            -B build-web \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build WebAssembly
+        run: cmake --build build-web --parallel
+
+      - name: Prepare web artifact
+        shell: bash
+        run: |
+          index_file="$(find build-web -type f -name index.html -print -quit)"
+
+          if [[ -z "$index_file" ]]; then
+            echo "Generated index.html was not found."
+            exit 1
+          fi
+
+          output_directory="$(dirname "$index_file")"
+          artifact_directory="$GITHUB_WORKSPACE/artifact-web"
+
+          mkdir -p "$artifact_directory"
+          cp -a "$output_directory/." "$artifact_directory/"
+
+          cp README.md "$artifact_directory/README.md"
+          cp LICENSE "$artifact_directory/LICENSE"
+          cp THIRD_PARTY_LICENSES.md \
+            "$artifact_directory/THIRD_PARTY_LICENSES.md"
+
+          if [[ -d licenses ]]; then
+            cp -R licenses "$artifact_directory/licenses"
+          fi
+
+          required_files=(
+            "index.html"
+            "index.js"
+            "index.wasm"
+            "index.data"
+            "app.js"
+            "style.css"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [[ ! -f "$artifact_directory/$file" ]]; then
+              echo "Required web output is missing: $file"
+              exit 1
+            fi
+          done
+
+          echo "Web artifact contents:"
+          find "$artifact_directory" -maxdepth 3 -type f -print
+
+      - name: Upload WebAssembly artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chip8-web-wasm
+          path: artifact-web/
+          if-no-files-found: error
+          retention-days: 14

@@ -284,6 +284,117 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  build-web-release:
+    name: Build WebAssembly release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install build tools
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            cmake \
+            ninja-build \
+            python3 \
+            zip
+
+      - name: Set up Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+
+      - name: Show Emscripten version
+        run: emcc --version
+
+      - name: Configure WebAssembly release
+        shell: bash
+        run: |
+          emcmake cmake \
+            -S . \
+            -B build-web \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build WebAssembly release
+        run: cmake --build build-web --parallel
+
+      - name: Package WebAssembly release
+        shell: bash
+        run: |
+          index_file="$(find build-web -type f -name index.html -print -quit)"
+
+          if [[ -z "$index_file" ]]; then
+            echo "Generated index.html was not found."
+            exit 1
+          fi
+
+          output_directory="$(dirname "$index_file")"
+
+          package_name="chip8-${GITHUB_REF_NAME}-web"
+          package_directory="$GITHUB_WORKSPACE/package/$package_name"
+          release_directory="$GITHUB_WORKSPACE/release-assets"
+
+          mkdir -p "$package_directory"
+          mkdir -p "$release_directory"
+
+          cp -a "$output_directory/." "$package_directory/"
+
+          cp README.md "$package_directory/README.md"
+          cp LICENSE "$package_directory/LICENSE"
+          cp THIRD_PARTY_LICENSES.md \
+            "$package_directory/THIRD_PARTY_LICENSES.md"
+
+          if [[ -d licenses ]]; then
+            cp -R licenses "$package_directory/licenses"
+          fi
+
+          required_files=(
+            "index.html"
+            "index.js"
+            "index.wasm"
+            "index.data"
+            "app.js"
+            "style.css"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [[ ! -f "$package_directory/$file" ]]; then
+              echo "Required web output is missing: $file"
+              exit 1
+            fi
+          done
+
+          cd "$GITHUB_WORKSPACE/package"
+
+          zip \
+            -r \
+            "$release_directory/$package_name.zip" \
+            "$package_name"
+
+          cd "$release_directory"
+
+          sha256sum "$package_name.zip" \
+            > "$package_name.zip.sha256"
+
+          echo "Web release assets:"
+          find "$release_directory" -maxdepth 2 -type f -print
+
+      - name: Upload WebAssembly release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-web-wasm
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 7
+
   publish-release:
     name: Publish GitHub release
     needs: build-release
