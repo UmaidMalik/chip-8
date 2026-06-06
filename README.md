@@ -2,27 +2,66 @@
 
 A cross-platform CHIP-8 emulator written in modern C++ using SDL3.
 
-The project builds on Linux and Windows through CMake and includes automated GitHub Actions workflows for continuous integration and tagged releases.
+The emulator runs natively on Linux and Windows and can also run directly in the browser through WebAssembly and Emscripten.
+
+## Try It Online
+
+**[Launch the CHIP-8 Emulator in your browser](https://umaidmalik.github.io/chip-8/)**
+
+The browser version includes several diagnostic ROMs and also allows you to upload a local CHIP-8 ROM from your computer.
 
 ## Features
 
 * CHIP-8 instruction execution
 * 64 × 32 monochrome display
 * SDL3 window, rendering, and keyboard input
-* Delay and sound timer handling
-* Configurable CPU and display timing
-* Command-line ROM loading
-* Linux and Windows builds
-* Included CHIP-8 diagnostic ROMs
-* Automated CI and GitHub Releases
+* Command-line ROM loading on Linux and Windows
+* Local ROM uploads in the browser
+* Bundled diagnostic ROM selector
+* Linux x86-64 builds
+* Windows x86-64 builds
+* WebAssembly browser build
+* Automated continuous integration
+* Automated GitHub Releases
+* Automated GitHub Pages deployment
+
+## Platforms
+
+| Platform | Format                   |
+| -------- | ------------------------ |
+| Browser  | WebAssembly              |
+| Linux    | Native x86-64 executable |
+| Windows  | Native x86-64 executable |
+
+## Browser Version
+
+The web version is compiled from the same C++ source code using Emscripten.
+
+It supports:
+
+* Running bundled diagnostic ROMs
+* Uploading local ROM files
+* ROM files with extensions such as `.ch8`
+* Extensionless ROM files such as `PONG`
+* Keyboard input through the browser
+* SDL3 rendering through an HTML canvas
+
+To upload a ROM:
+
+1. Open the browser emulator.
+2. Select **Choose File**.
+3. Choose a CHIP-8 ROM from your computer.
+4. Click the emulator canvas to give it keyboard focus.
+
+The uploaded file stays in the browser session and is not sent to a server.
 
 ## Download
 
-Prebuilt Linux and Windows packages are available from the repository's GitHub Releases page.
+Prebuilt Linux and Windows packages are available from the repository’s GitHub Releases page.
 
-Each release contains:
+Each release contains the emulator executable, documentation, licenses, and bundled diagnostic ROMs.
 
-### Linux
+### Linux Package
 
 ```text
 chip8-vX.Y.Z-linux-x86_64/
@@ -30,7 +69,8 @@ chip8-vX.Y.Z-linux-x86_64/
 ├── README.md
 ├── LICENSE
 ├── THIRD_PARTY_LICENSES.md
-└── rom/
+├── licenses/
+└── roms/
     ├── 1-chip8-logo.ch8
     ├── 2-ibm-logo.ch8
     ├── 3-corax+.ch8
@@ -42,7 +82,7 @@ chip8-vX.Y.Z-linux-x86_64/
     └── test_opcode.ch8
 ```
 
-### Windows
+### Windows Package
 
 ```text
 chip8-vX.Y.Z-windows-x86_64/
@@ -50,7 +90,8 @@ chip8-vX.Y.Z-windows-x86_64/
 ├── README.md
 ├── LICENSE
 ├── THIRD_PARTY_LICENSES.md
-└── rom/
+├── licenses/
+└── roms/
     ├── 1-chip8-logo.ch8
     ├── 2-ibm-logo.ch8
     ├── 3-corax+.ch8
@@ -62,48 +103,58 @@ chip8-vX.Y.Z-windows-x86_64/
     └── test_opcode.ch8
 ```
 
-## Running the Emulator
+## Running the Native Emulator
 
-The emulator expects the ROM path as its command-line argument.
+The Linux and Windows executables expect the ROM path as a command-line argument.
+
+ROM filenames do not need to have a `.ch8` extension.
 
 ### Linux
 
 ```bash
 chmod +x Chip8
-./Chip8 rom/1-chip8-logo.ch8
+./Chip8 roms/1-chip8-logo.ch8
 ```
 
-For example:
+Other examples:
 
 ```bash
-./Chip8 rom/3-corax+.ch8
-./Chip8 rom/5-quirks.ch8
-./Chip8 rom/test_opcode.ch8
+./Chip8 roms/3-corax+.ch8
+./Chip8 roms/5-quirks.ch8
+./Chip8 roms/test_opcode.ch8
+./Chip8 /path/to/PONG
+```
+
+Paths containing spaces should be placed in quotation marks:
+
+```bash
+./Chip8 "/home/user/My ROMs/PONG"
 ```
 
 ### Windows PowerShell
 
 ```powershell
-.\Chip8.exe .\rom\1-chip8-logo.ch8
+.\Chip8.exe .\roms\1-chip8-logo.ch8
 ```
 
-For example:
+Other examples:
 
 ```powershell
-.\Chip8.exe .\rom\3-corax+.ch8
-.\Chip8.exe .\rom\5-quirks.ch8
-.\Chip8.exe .\rom\test_opcode.ch8
+.\Chip8.exe .\roms\3-corax+.ch8
+.\Chip8.exe .\roms\5-quirks.ch8
+.\Chip8.exe .\roms\test_opcode.ch8
+.\Chip8.exe C:\path\to\PONG
 ```
 
 Paths containing spaces should be placed in quotation marks:
 
 ```powershell
-.\Chip8.exe "C:\Users\Name\My ROMs\game.ch8"
+.\Chip8.exe "C:\Users\Name\My ROMs\PONG"
 ```
 
 ## Included Diagnostic ROMs
 
-The included ROMs are intended for testing emulator correctness:
+The bundled ROMs are intended for testing emulator behavior and compatibility.
 
 | ROM                | Purpose                              |
 | ------------------ | ------------------------------------ |
@@ -112,12 +163,12 @@ The included ROMs are intended for testing emulator correctness:
 | `3-corax+.ch8`     | Opcode behavior test                 |
 | `4-flags.ch8`      | Arithmetic and flag behavior test    |
 | `5-quirks.ch8`     | CHIP-8 compatibility-quirk test      |
-| `6-keypad.ch8`     | Key input test                       |
+| `6-keypad.ch8`     | Keyboard input test                  |
 | `7-beep.ch8`       | Sound timer and beep test            |
 | `8-scrolling.ch8`  | Scrolling and extended behavior test |
 | `test_opcode.ch8`  | Additional opcode test ROM           |
 
-The diagnostic ROMs do not guarantee that every CHIP-8 program will behave correctly. Different CHIP-8 interpreters use different compatibility quirks.
+Passing these tests does not guarantee that every CHIP-8 program will behave identically. Different CHIP-8 interpreters support different compatibility quirks.
 
 ## Keyboard Layout
 
@@ -130,7 +181,7 @@ The original CHIP-8 keypad:
 A 0 B F
 ```
 
-Typical computer keyboard mapping:
+Computer keyboard mapping:
 
 ```text
 1 2 3 4
@@ -139,24 +190,32 @@ A S D F
 Z X C V
 ```
 
-Update this section if the emulator currently uses a different mapping.
+Click the emulator window or browser canvas before using the keyboard controls.
 
 ## Building from Source
 
 ### Requirements
 
+For native builds:
+
 * C++23-compatible compiler
 * CMake
-* SDL3
-* fmt
+* Ninja or Visual Studio
 * Git
+
+For browser builds:
+
+* Emscripten SDK
+* CMake
+* Ninja
+* Python 3 for local hosting
 
 SDL3 and fmt are included as Git submodules.
 
 Clone the repository recursively:
 
 ```bash
-git clone --recursive <repository-url>
+git clone --recursive https://github.com/umaid54321/chip-8.git
 cd chip-8
 ```
 
@@ -166,22 +225,33 @@ For an existing clone:
 git submodule update --init --recursive
 ```
 
-### Linux
+## Linux Build
+
+Configure:
 
 ```bash
-cmake -S . -B build-linux -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake \
+    -S . \
+    -B build-linux \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release
+```
+
+Build:
+
+```bash
 cmake --build build-linux --parallel
 ```
 
 Run:
 
 ```bash
-./build-linux/bin/Release/Chip8 rom/1-chip8-logo.ch8
+./build-linux/bin/Release/Chip8 roms/1-chip8-logo.ch8
 ```
 
-The executable location may vary depending on the CMake generator and configuration.
+The exact executable location may vary depending on the selected CMake generator and output configuration.
 
-### Windows
+## Windows Build
 
 From PowerShell or a Visual Studio developer terminal:
 
@@ -193,35 +263,101 @@ cmake --build build --config Release --parallel
 Run:
 
 ```powershell
-.\build\bin\Release\Chip8.exe .\rom\1-chip8-logo.ch8
+.\build\bin\Release\Chip8.exe .\roms\1-chip8-logo.ch8
 ```
 
-## Continuous Integration
+## Browser and WebAssembly Build
 
-GitHub Actions builds the emulator on:
+Install and activate the Emscripten SDK before configuring the project.
 
-* Ubuntu
-* Windows
+Configure:
 
-Each successful CI run produces downloadable platform-specific build artifacts containing:
+```bash
+emcmake cmake \
+    -S . \
+    -B build-web \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release
+```
 
-* The emulator executable
-* This README
-* Third-party licensing information
-* The included test ROMs
+Build:
 
-Version tags matching `v*`, such as `v0.1.0`, create a GitHub Release with Linux and Windows packages.
+```bash
+cmake --build build-web --parallel
+```
+
+Locate the generated page:
+
+```bash
+find build-web -name index.html
+```
+
+The output includes files similar to:
+
+```text
+index.html
+index.js
+index.wasm
+index.data
+style.css
+app.js
+```
+
+The `.data` file contains the bundled ROM resources.
+
+### Run the Web Build Locally
+
+Serve the output through HTTP instead of opening `index.html` directly.
+
+For example:
+
+```bash
+python3 -m http.server 8000 --directory build-web/bin/Release
+```
+
+Then open:
+
+```text
+http://localhost:8000/
+```
+
+Adjust the served directory if CMake generated the files in a different location.
+
+## Project Structure
+
+```text
+chip-8/
+├── include/
+├── src/
+├── roms/
+├── web/
+│   ├── shell.html
+│   ├── app.js
+│   └── style.css
+├── licenses/
+├── thirdparty/
+│   ├── SDL/
+│   └── fmt/
+├── .github/
+│   └── workflows/
+├── CMakeLists.txt
+├── README.md
+├── LICENSE
+└── THIRD_PARTY_LICENSES.md
+```
 
 ## Third-Party Test ROMs
 
-The test ROMs in `rom/` are redistributed for emulator development and verification.
+The test ROMs in `roms/` are redistributed for emulator development and verification.
 
 ROMs `1-chip8-logo.ch8` through `8-scrolling.ch8` originate from the Timendus CHIP-8 test suite and are distributed under GPLv3.
 
-`test_opcode.ch8` originates from corax89's CHIP-8 test ROM project and is distributed under the MIT License.
+`test_opcode.ch8` originates from corax89’s CHIP-8 test ROM project and is distributed under the MIT License.
 
-See `THIRD_PARTY_LICENSES.md` and the upstream projects for complete attribution and license information.
+See `THIRD_PARTY_LICENSES.md`, the files under `licenses/`, and the upstream projects for complete attribution and licensing information.
 
 ## License
 
-See the repository's `LICENSE` file.
+The CHIP-8 emulator source code is available under the license in the repository’s `LICENSE` file.
+
+Third-party ROMs and dependencies remain subject to their respective licenses.
